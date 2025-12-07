@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "number_of_shards": 6,
+    "number_of_replicas": 1,
+    "index": {
+      "codec": "best_compression",
+      "max_ngram_diff": 8,
+      "analysis": {
+        "analyzer": {
+          "ngram_analyzer": {
+            "tokenizer": "standard",
+            "filter": ["lowercase", "ngram_filter"]
+          }
+        },
+        "filter": {
+          "ngram_filter": {
+            "type": "ngram",
+            "min_gram": 3,
+            "max_gram": 10
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      "first_name": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        }
+      },
+      "last_name": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        }
+      },
+      "company_id": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        }
+      },
+      "departments": {
+        "type": "keyword"
+      },
+      "mobile_phone": {
+        "type": "keyword"
+      },
+      "email_status": {
+        "type": "keyword"
+      },
+      "seniority": {
+        "type": "keyword"
+      },
+      "city": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "state": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "country": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "linkedin_url": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "created_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}
+

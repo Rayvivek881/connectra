@@ -1,0 +1,27 @@
+docker run -d --name elasticsearch \                                                                                                                            
+  --net es-net \                                                        
+  -p 9200:9200 -p 9300:9300 \
+  -v my_es_data:/usr/share/elasticsearch/data \
+  -e "discovery.type=single-node" \
+  -e "ELASTIC_PASSWORD=Focus@123" \
+  -e "xpack.security.enabled=true" \
+  -e "xpack.security.transport.ssl.enabled=false" \
+  -e "bootstrap.memory_lock=true" \
+  -e "ES_JAVA_OPTS=-Xms4g -Xmx4g" \
+  --ulimit memlock=-1:-1 \
+  --ulimit nofile=65535:65535 \
+  docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+
+docker exec -it elasticsearch \                                                                                                                                 
+  /usr/share/elasticsearch/bin/elasticsearch-users useradd kibana_user \
+  -p kibana@123 \
+  -r kibana_system
+
+
+docker run -d --name kibana \
+  --net es-net \
+  -p 5601:5601 \
+  -e "ELASTICSEARCH_HOSTS=http://elasticsearch:9200" \
+  -e "ELASTICSEARCH_USERNAME=kibana_user" \
+  -e "ELASTICSEARCH_PASSWORD=kibana@123" \
+  docker.elastic.co/kibana/kibana:8.11.1
