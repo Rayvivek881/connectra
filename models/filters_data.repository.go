@@ -9,7 +9,7 @@ import (
 )
 
 type FiltersDataQuery struct {
-	Service    string `json:"service"`
+	Service    string `json:"service,omitempty"`
 	FilterKey  string `json:"filter_key"`
 	SearchText string `json:"search_text,omitempty"`
 	Page       int    `json:"page"`

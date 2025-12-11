@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"vivek-ray/constants"
 	"vivek-ray/models"
 	"vivek-ray/utilities"
 
@@ -26,5 +27,6 @@ func BindAndValidateFiltersDataQuery(c *gin.Context) (models.FiltersDataQuery, e
 	if err := utilities.ValidatePageSize(query.Limit); err != nil {
 		return query, err
 	}
+	query.Service = constants.ContactsService
 	return query, nil
 }

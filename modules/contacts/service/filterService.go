@@ -30,7 +30,7 @@ type FilterSvcRepo interface {
 }
 
 func (s *FilterService) GetFilters() ([]*models.ModelFilter, error) {
-	return s.filtersRepository.GetFiltersByService(constants.CompaniesService)
+	return s.filtersRepository.GetFiltersByService(constants.ContactsService)
 }
 
 func (s *FilterService) GetFilterData(query models.FiltersDataQuery) ([]string, error) {

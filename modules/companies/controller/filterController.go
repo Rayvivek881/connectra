@@ -3,7 +3,7 @@ package controller
 import (
 	"net/http"
 	"vivek-ray/modules/companies/helper"
-	"vivek-ray/modules/contacts/service"
+	"vivek-ray/modules/companies/service"
 
 	"github.com/gin-gonic/gin"
 )

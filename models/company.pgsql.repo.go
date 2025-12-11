@@ -63,7 +63,10 @@ type PgCompanySvcRepo interface {
 func (t *PgCompanyStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*PgCompany, error) {
 	var companies []*PgCompany
 
-	queryBuilder := t.PgDbClient.NewSelect().Model(&companies).Where("? ILIKE ?", query.FilterKey, "%"+query.SearchText+"%")
+	// fetch only filter column
+	queryBuilder := t.PgDbClient.NewSelect().Model(&companies).
+		Where("? ILIKE ?", bun.Ident(query.FilterKey), "%"+query.SearchText+"%").Column(query.FilterKey).Distinct()
+
 	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
 	if query.Page > 0 {
 		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit)
