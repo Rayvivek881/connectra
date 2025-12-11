@@ -4,6 +4,7 @@ import (
 	"vivek-ray/connections"
 	"vivek-ray/constants"
 	"vivek-ray/models"
+	"vivek-ray/modules/contacts/helper"
 	"vivek-ray/utilities"
 )
 
@@ -26,34 +27,36 @@ func NewFilterService() FilterSvcRepo {
 
 type FilterSvcRepo interface {
 	GetFilters() ([]*models.ModelFilter, error)
-	GetFilterData(query models.FiltersDataQuery) ([]string, error)
+	GetFilterData(query models.FiltersDataQuery) ([]helper.FilterDataResponse, error)
 }
 
 func (s *FilterService) GetFilters() ([]*models.ModelFilter, error) {
 	return s.filtersRepository.GetFiltersByService(constants.ContactsService)
 }
 
-func (s *FilterService) GetFilterData(query models.FiltersDataQuery) ([]string, error) {
+func (s *FilterService) GetFilterData(query models.FiltersDataQuery) ([]helper.FilterDataResponse, error) {
 	filterData, err := s.filtersRepository.GetFilterByKeyAndService(query.Service, query.FilterKey)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]string, 0)
 	if !filterData.DirectDrived {
 		curr_lst, err := s.filtersDataRepository.GetFiltersByQuery(query)
-		if err == nil {
-			for _, curr_data := range curr_lst {
-				result = append(result, curr_data.Value)
-			}
+		if err != nil {
+			return nil, err
 		}
-		return result, err
+		return helper.ToFilterDataResponses(curr_lst), nil
 	}
+
+	result := make([]helper.FilterDataResponse, 0)
 	curr_lst, err := s.pgContactRepository.GetFiltersByQuery(query)
 	if err == nil {
 		for _, curr_data := range curr_lst {
 			fieldValue := utilities.GetFieldValue(curr_data, query.FilterKey)
 			if fieldValue != "" {
-				result = append(result, fieldValue)
+				result = append(result, helper.FilterDataResponse{
+					Value:        fieldValue,
+					DisplayValue: fieldValue,
+				})
 			}
 		}
 	}
