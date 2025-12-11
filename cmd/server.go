@@ -4,6 +4,7 @@ import (
 	"vivek-ray/modules/companies"
 	"vivek-ray/modules/contacts"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -30,6 +31,12 @@ func startServer() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"*"},
+	}))
 
 	router.SetTrustedProxies(nil)
 
