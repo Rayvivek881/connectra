@@ -1,6 +1,5 @@
 .env
 
-go.sum
 .env.local
 .env.development.local
 .env.test.local
@@ -8,6 +7,5 @@ go.sum
 .env.development
 .env.test
 .env.production
-go.mod
 
 vendor/
