@@ -15,6 +15,7 @@ func InitSearchEngine() {
 		Port:     conf.SearchEngineConfig.ElasticsearchPort,
 		Debug:    conf.SearchEngineConfig.ElasticsearchDebug,
 		Auth:     conf.SearchEngineConfig.ElasticsearchAuth,
+		SSL:      conf.SearchEngineConfig.ElasticsearchSSL,
 	})
 	ElasticsearchConnection.Open()
 }

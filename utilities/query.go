@@ -176,22 +176,19 @@ func (q *NQLQuery) addSort(resultQuery map[string]any) {
 }
 
 func (q *NQLQuery) ToElasticsearchQuery(forCount bool) map[string]any {
-	if q.isEmpty() {
-		return constants.MatchAllQuery
-	}
-	boolQuery := q.buildBoolQuery()
-	if len(boolQuery) == 0 {
-		return constants.MatchAllQuery
+	resultQuery := make(map[string]any)
+	if !forCount {
+		q.addPagination(resultQuery)
+		q.addSort(resultQuery)
 	}
 
-	resultQuery := map[string]any{
-		"query": map[string]any{"bool": boolQuery},
-	}
-	if forCount {
+	boolQuery := q.buildBoolQuery()
+	if q.isEmpty() || len(boolQuery) == 0 {
+		resultQuery["query"] = map[string]any{
+			"match_all": map[string]any{},
+		}
 		return resultQuery
 	}
-
-	q.addPagination(resultQuery)
-	q.addSort(resultQuery)
+	resultQuery["query"] = map[string]any{"bool": boolQuery}
 	return resultQuery
 }

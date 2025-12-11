@@ -7,9 +7,9 @@ import (
 )
 
 func Routes(router *gin.RouterGroup) {
+	router.POST("/", controller.GetCompaniesByFilter)
+	router.POST("/count", controller.GetCompaniesCountByFilter)
+
 	router.GET("/filters", controller.GetFilters)
 	router.POST("/filters/data", controller.GetFilterData)
-
-	router.POST("/companies", controller.GetCompaniesByFilter)
-	router.POST("/companies/count", controller.GetCompaniesCountByFilter)
 }

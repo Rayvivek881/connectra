@@ -24,6 +24,7 @@ func ElasticContactRepository(client *elasticsearch.Client) ElasticContactSvcRep
 type ElasticContactSvcRepo interface {
 	ListByQueryMap(query map[string]any) ([]*ElasticContact, error)
 	CountByQueryMap(query map[string]any) (int64, error)
+	BulkUpsert(contacts []*ElasticContact) (int64, error)
 }
 
 func (t *ElasticContactStruct) ListByQueryMap(query map[string]any) ([]*ElasticContact, error) {
@@ -86,4 +87,32 @@ func (t *ElasticContactStruct) CountByQueryMap(query map[string]any) (int64, err
 	}
 
 	return countResponse.Count, nil
+}
+
+func (t *ElasticContactStruct) BulkUpsert(contacts []*ElasticContact) (int64, error) {
+	var buf bytes.Buffer
+	for _, contact := range contacts {
+		meta := map[string]any{
+			"index": map[string]any{
+				"_index": constants.ContactIndex,
+				"_id":    contact.Id,
+			},
+		}
+		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, contact) != nil {
+			continue
+		}
+	}
+
+	response, err := t.ElasticClient.Bulk(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+
+	if response.IsError() {
+		bodyBytes, _ := io.ReadAll(response.Body)
+		return 0, fmt.Errorf("elasticsearch bulk error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+	}
+
+	return int64(len(contacts)), nil
 }

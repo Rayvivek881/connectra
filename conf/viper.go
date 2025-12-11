@@ -10,7 +10,10 @@ import (
 type Viper struct{}
 
 type app struct {
-	ENV string `mapstructure:"APP_ENV"`
+	ENV            string `mapstructure:"APP_ENV"`
+	ParallelJobs   int    `mapstructure:"PARALLEL_JOBS"`
+	InQueueSize    int    `mapstructure:"IN_QUEUE_SIZE"`
+	TickerInterval int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
 }
 
 type database struct {

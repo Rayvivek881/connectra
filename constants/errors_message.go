@@ -19,4 +19,7 @@ var (
 	InvalidAuthorizationFormatError  = errors.New("invalid authorization header format")
 
 	InvalidRequestBodyError = errors.New("invalid request body")
+
+	PageSizeExceededError   = errors.New("page size exceeds maximum limit")
+	PageNumberExceededError = errors.New("page number exceeds maximum limit")
 )

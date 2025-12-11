@@ -1,7 +1,7 @@
 package constants
 
 var (
-	ContactsService  = "contacts"
-	CompaniesService = "companies"
+	ContactsService  = "contact"
+	CompaniesService = "company"
 	AuthService      = "auth"
 )

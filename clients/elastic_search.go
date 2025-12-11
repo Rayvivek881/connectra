@@ -2,11 +2,13 @@ package clients
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/elastic/elastic-transport-go/v8/elastictransport"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/rs/zerolog/log"
 )
@@ -20,6 +22,7 @@ type ElasticsearchConfig struct {
 	Port     string
 	Debug    bool
 	Auth     bool
+	SSL      bool
 }
 
 type ElasticsearchConnection struct {
@@ -35,24 +38,39 @@ func NewElasticsearchConnection(config *ElasticsearchConfig) *ElasticsearchConne
 
 func (c *ElasticsearchConnection) Open() {
 	var addresses []string
-	if c.Config.Port != "" {
+	if c.Config.SSL {
 		addresses = []string{fmt.Sprintf("https://%s:%s", c.Config.Host, c.Config.Port)}
 	} else {
-		addresses = []string{fmt.Sprintf("https://%s", c.Config.Host)}
+		addresses = []string{fmt.Sprintf("http://%s:%s", c.Config.Host, c.Config.Port)}
 	}
 
 	cfg := elasticsearch.Config{
 		Addresses: addresses,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     30 * time.Minute,
+			DisableCompression:  false,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
 		},
+
+		CompressRequestBody: !c.Config.Debug,
 	}
 
 	if c.Config.Auth {
 		cfg.Username = c.Config.User
 		cfg.Password = c.Config.Password
+	}
+
+	if c.Config.Debug {
+		cfg.Logger = &elastictransport.ColorLogger{
+			Output:             os.Stdout,
+			EnableRequestBody:  true,
+			EnableResponseBody: false,
+		}
 	}
 
 	client, err := elasticsearch.NewClient(cfg)

@@ -45,22 +45,24 @@ func (c *PgsqlConnection) Open() {
 		log.Error().Err(err).Msg("Error parsing connection url")
 		return
 	}
-	config.PreferSimpleProtocol = true
+	config.PreferSimpleProtocol = false
 	sqldb := stdlib.OpenDB(*config)
 
 	c.Client = bun.NewDB(sqldb, pgdialect.New())
 	if c.config.Debug {
 		c.Client.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(c.config.Debug)))
 	}
-	sqldb.SetMaxOpenConns(500)
-	sqldb.SetMaxIdleConns(100)
+	sqldb.SetMaxOpenConns(100)
+	sqldb.SetMaxIdleConns(50)
 
-	sqldb.SetConnMaxLifetime(2 * time.Minute)
-	sqldb.SetConnMaxIdleTime(2 * time.Minute)
+	sqldb.SetConnMaxLifetime(30 * time.Minute)
+	sqldb.SetConnMaxIdleTime(30 * time.Minute)
 
 	if err := c.Client.Ping(); err != nil {
 		log.Error().Err(err).Msg("Error connecting to pgsql")
+		return
 	}
+	log.Info().Msgf("PostgreSQL Connected Successfully")
 }
 
 func (c *PgsqlConnection) Close() {

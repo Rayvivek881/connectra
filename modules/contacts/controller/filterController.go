@@ -2,7 +2,7 @@ package controller
 
 import (
 	"net/http"
-	"vivek-ray/models"
+	"vivek-ray/modules/contacts/helper"
 	"vivek-ray/modules/contacts/service"
 
 	"github.com/gin-gonic/gin"
@@ -21,8 +21,8 @@ func GetFilters(c *gin.Context) {
 }
 
 func GetFilterData(c *gin.Context) {
-	var query models.FiltersDataQuery
-	if err := c.ShouldBindJSON(&query); err != nil {
+	query, err := helper.BindAndValidateFiltersDataQuery(c)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
 	}

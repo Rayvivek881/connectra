@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"vivek-ray/constants"
+	"vivek-ray/utilities"
 
 	"github.com/uptrace/bun"
 )
@@ -26,6 +28,23 @@ type PgContactFilters struct {
 	Limit int
 }
 
+func (f *PgContactFilters) IsEmpty() bool {
+	if len(f.Uuids) > 0 {
+		return false
+	}
+	if len(f.CompanyIds) > 0 {
+		return false
+	}
+	if len(f.Emails) > 0 {
+		return false
+	}
+	if len(f.MobilePhones) > 0 {
+		return false
+	}
+
+	return true
+}
+
 func (f *PgContactFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.Uuids) > 0 {
 		query.Where("uuid IN (?)", bun.In(f.Uuids))
@@ -45,21 +64,26 @@ func (f *PgContactFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 type PgContactSvcRepo interface {
 	GetFiltersByQuery(query FiltersDataQuery) ([]*PgContact, error)
 	ListByFilters(filters PgContactFilters) ([]*PgContact, error)
+	BulkUpsert(contacts []*PgContact) (int64, error)
 }
 
 func (t *PgContactStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*PgContact, error) {
 	var contacts []*PgContact
 
 	queryBuilder := t.PgDbClient.NewSelect().Model(&contacts).Where("? ILIKE ?", query.FilterKey, "%"+query.SearchText+"%")
-	if query.Page > 0 && query.Limit > 0 {
-		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit).Limit(query.Limit)
+	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
+	if query.Page > 0 {
+		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit)
 	}
-	err := queryBuilder.Scan(context.Background())
+	err := queryBuilder.Limit(query.Limit).Scan(context.Background())
 	return contacts, err
 }
 
 func (t *PgContactStruct) ListByFilters(filters PgContactFilters) ([]*PgContact, error) {
-	var contacts []*PgContact
+	contacts := make([]*PgContact, 0)
+	if filters.IsEmpty() {
+		return contacts, nil
+	}
 
 	queryBuilder := t.PgDbClient.NewSelect().Model(&contacts)
 	filters.ToQuery(queryBuilder)
@@ -69,4 +93,34 @@ func (t *PgContactStruct) ListByFilters(filters PgContactFilters) ([]*PgContact,
 	}
 	err := queryBuilder.Scan(context.Background())
 	return contacts, err
+}
+
+func (t *PgContactStruct) BulkUpsert(contacts []*PgContact) (int64, error) {
+	_, err := t.PgDbClient.NewInsert().
+		Model(&contacts).
+		On("CONFLICT(uuid) DO UPDATE").
+		Set("first_name = EXCLUDED.first_name").
+		Set("last_name = EXCLUDED.last_name").
+		Set("company_id = EXCLUDED.company_id").
+		Set("email = EXCLUDED.email").
+		Set("title = EXCLUDED.title").
+		Set("departments = EXCLUDED.departments").
+		Set("mobile_phone = EXCLUDED.mobile_phone").
+		Set("email_status = EXCLUDED.email_status").
+		Set("seniority = EXCLUDED.seniority").
+		Set("city = EXCLUDED.city").
+		Set("state = EXCLUDED.state").
+		Set("country = EXCLUDED.country").
+		Set("linkedin_url = EXCLUDED.linkedin_url").
+		Set("facebook_url = EXCLUDED.facebook_url").
+		Set("twitter_url = EXCLUDED.twitter_url").
+		Set("website = EXCLUDED.website").
+		Set("work_direct_phone = EXCLUDED.work_direct_phone").
+		Set("home_phone = EXCLUDED.home_phone").
+		Set("other_phone = EXCLUDED.other_phone").
+		Set("stage = EXCLUDED.stage").
+		Set("updated_at = EXCLUDED.updated_at").
+		Exec(context.Background())
+
+	return int64(len(contacts)), err
 }

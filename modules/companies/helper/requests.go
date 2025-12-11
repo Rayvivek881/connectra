@@ -15,6 +15,7 @@ func BindAndValidateNQLQuery(c *gin.Context) (utilities.NQLQuery, error) {
 	if err := utilities.ValidateElasticPagination(query.Page, query.Limit); err != nil {
 		return query, err
 	}
+
 	return query, nil
 }
 
@@ -26,5 +27,6 @@ func BindAndValidateFiltersDataQuery(c *gin.Context) (models.FiltersDataQuery, e
 	if err := utilities.ValidatePageSize(query.Limit); err != nil {
 		return query, err
 	}
+
 	return query, nil
 }

@@ -1,7 +1,7 @@
 docker run -d --name elasticsearch \                                                                                                                            
   --net es-net \                                                        
   -p 9200:9200 -p 9300:9300 \
-  -v my_es_data:/usr/share/elasticsearch/data \
+  -v es_data:/usr/share/elasticsearch/data \
   -e "discovery.type=single-node" \
   -e "ELASTIC_PASSWORD=Focus@123" \
   -e "xpack.security.enabled=true" \

@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"vivek-ray/constants"
+	"vivek-ray/utilities"
 
 	"github.com/uptrace/bun"
 )
@@ -35,9 +37,10 @@ func (t *FiltersDataStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*ModelF
 	if query.SearchText != "" {
 		queryBuilder = queryBuilder.Where("display_value ILIKE ?", "%"+query.SearchText+"%")
 	}
-	if query.Page > 0 && query.Limit > 0 {
-		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit).Limit(query.Limit)
+	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
+	if query.Page > 0 {
+		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit)
 	}
-	err := queryBuilder.Scan(context.Background())
+	err := queryBuilder.Limit(query.Limit).Scan(context.Background())
 	return filtersData, err
 }

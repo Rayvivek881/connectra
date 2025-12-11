@@ -4,13 +4,9 @@ var (
 	CompanyIndex      = "companies_index"
 	ContactIndex      = "contacts_index"
 	SearchTypeExact   = "exact"
-	SearchTypeShuffle = "shuffle"
+	SearchTypeShuffle = "suffle"
 
-	DefaultPageSize = 25
+	DefaultPageSize      = 25
+	MaxElasticPageNumber = 10
+	MaxPageSize          = 100
 )
-
-var MatchAllQuery = map[string]any{
-	"query": map[string]any{
-		"match_all": map[string]any{},
-	},
-}

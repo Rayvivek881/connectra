@@ -42,3 +42,9 @@ type NQLQuery struct {
 	Page  int `json:"page,omitempty"`
 	Limit int `json:"limit,omitempty"`
 }
+
+type InsertFileJobData struct {
+	FileS3Key    string `json:"file_s3_key"`
+	FileS3Bucket string `json:"file_s3_bucket"`
+	FileType     string `json:"file_type"`
+}

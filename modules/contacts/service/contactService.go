@@ -29,7 +29,6 @@ func (s *ContactService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCo
 	if err != nil {
 		return nil, err
 	}
-
 	contactUuids := make([]string, 0)
 	for _, contact := range elasticContacts {
 		contactUuids = append(contactUuids, contact.Id)

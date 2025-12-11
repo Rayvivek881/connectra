@@ -1,10 +1,13 @@
 package utilities
 
 import (
+	"bytes"
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
+	"vivek-ray/constants"
 )
 
 func GetFieldValue(v interface{}, fieldName string) string {
@@ -36,6 +39,16 @@ func GetFieldValue(v interface{}, fieldName string) string {
 	return ""
 }
 
+func AddToBuffer(buf *bytes.Buffer, data any) error {
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	buf.Write(dataBytes)
+	buf.WriteByte('\n')
+	return nil
+}
+
 func InlineIf(condition bool, trueValue any, falseValue any) any {
 	if condition {
 		return trueValue
@@ -49,4 +62,21 @@ func Max[T cmp.Ordered](a, b T) T {
 
 func Min[T cmp.Ordered](a, b T) T {
 	return InlineIf(a < b, a, b).(T)
+}
+
+func ValidatePageSize(limit int) error {
+	if limit > constants.MaxPageSize {
+		return constants.PageSizeExceededError
+	}
+	return nil
+}
+
+func ValidateElasticPagination(page, limit int) error {
+	if limit > constants.MaxPageSize {
+		return constants.PageSizeExceededError
+	}
+	if page > constants.MaxElasticPageNumber {
+		return constants.PageNumberExceededError
+	}
+	return nil
 }

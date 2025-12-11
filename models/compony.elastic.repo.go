@@ -24,6 +24,7 @@ func ElasticCompanyRepository(client *elasticsearch.Client) ElasticCompanySvcRep
 type ElasticCompanySvcRepo interface {
 	ListByQueryMap(query map[string]any) ([]*ElasticCompany, error)
 	CountByQueryMap(query map[string]any) (int64, error)
+	BulkUpsert(companies []*ElasticCompany) (int64, error)
 }
 
 func (t *ElasticCompanyStruct) ListByQueryMap(query map[string]any) ([]*ElasticCompany, error) {
@@ -87,4 +88,32 @@ func (t *ElasticCompanyStruct) CountByQueryMap(query map[string]any) (int64, err
 	}
 
 	return countResponse.Count, nil
+}
+
+func (t *ElasticCompanyStruct) BulkUpsert(companies []*ElasticCompany) (int64, error) {
+	var buf bytes.Buffer
+	for _, company := range companies {
+		meta := map[string]any{
+			"index": map[string]any{
+				"_index": constants.CompanyIndex,
+				"_id":    company.Id,
+			},
+		}
+		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, company) != nil {
+			continue
+		}
+	}
+
+	response, err := t.ElasticClient.Bulk(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+
+	if response.IsError() {
+		bodyBytes, _ := io.ReadAll(response.Body)
+		return 0, fmt.Errorf("elasticsearch bulk error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+	}
+
+	return int64(len(companies)), nil
 }

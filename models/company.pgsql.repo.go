@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"vivek-ray/constants"
+	"vivek-ray/utilities"
 
 	"github.com/uptrace/bun"
 )
@@ -25,6 +27,20 @@ type PgCompanyFilters struct {
 	Limit int
 }
 
+func (f *PgCompanyFilters) IsEmpty() bool {
+	if len(f.Uuids) > 0 {
+		return false
+	}
+	if len(f.Names) > 0 {
+		return false
+	}
+	if len(f.NormalizedDomains) > 0 {
+		return false
+	}
+
+	return true
+}
+
 func (f *PgCompanyFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.Uuids) > 0 {
 		query.Where("uuid IN (?)", bun.In(f.Uuids))
@@ -41,21 +57,26 @@ func (f *PgCompanyFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 type PgCompanySvcRepo interface {
 	GetFiltersByQuery(query FiltersDataQuery) ([]*PgCompany, error)
 	ListByFilters(filters PgCompanyFilters) ([]*PgCompany, error)
+	BulkUpsert(companies []*PgCompany) (int64, error)
 }
 
 func (t *PgCompanyStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*PgCompany, error) {
 	var companies []*PgCompany
 
 	queryBuilder := t.PgDbClient.NewSelect().Model(&companies).Where("? ILIKE ?", query.FilterKey, "%"+query.SearchText+"%")
-	if query.Page > 0 && query.Limit > 0 {
-		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit).Limit(query.Limit)
+	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
+	if query.Page > 0 {
+		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit)
 	}
-	err := queryBuilder.Scan(context.Background())
+	err := queryBuilder.Limit(query.Limit).Scan(context.Background())
 	return companies, err
 }
 
 func (t *PgCompanyStruct) ListByFilters(filters PgCompanyFilters) ([]*PgCompany, error) {
-	var companies []*PgCompany
+	companies := make([]*PgCompany, 0)
+	if filters.IsEmpty() {
+		return companies, nil
+	}
 
 	queryBuilder := t.PgDbClient.NewSelect().Model(&companies)
 	filters.ToQuery(queryBuilder)
@@ -65,4 +86,35 @@ func (t *PgCompanyStruct) ListByFilters(filters PgCompanyFilters) ([]*PgCompany,
 	}
 	err := queryBuilder.Scan(context.Background())
 	return companies, err
+}
+
+func (t *PgCompanyStruct) BulkUpsert(companies []*PgCompany) (int64, error) {
+	_, err := t.PgDbClient.NewInsert().
+		Model(&companies).
+		On("CONFLICT(uuid) DO UPDATE").
+		Set("name = EXCLUDED.name").
+		Set("normalized_domain = EXCLUDED.normalized_domain").
+		Set("employees_count = EXCLUDED.employees_count").
+		Set("industries = EXCLUDED.industries").
+		Set("keywords = EXCLUDED.keywords").
+		Set("address = EXCLUDED.address").
+		Set("annual_revenue = EXCLUDED.annual_revenue").
+		Set("total_funding = EXCLUDED.total_funding").
+		Set("technologies = EXCLUDED.technologies").
+		Set("city = EXCLUDED.city").
+		Set("state = EXCLUDED.state").
+		Set("country = EXCLUDED.country").
+		Set("linkedin_url = EXCLUDED.linkedin_url").
+		Set("website = EXCLUDED.website").
+		Set("facebook_url = EXCLUDED.facebook_url").
+		Set("twitter_url = EXCLUDED.twitter_url").
+		Set("company_name_for_emails = EXCLUDED.company_name_for_emails").
+		Set("phone_number = EXCLUDED.phone_number").
+		Set("latest_funding = EXCLUDED.latest_funding").
+		Set("latest_funding_amount = EXCLUDED.latest_funding_amount").
+		Set("last_raised_at = EXCLUDED.last_raised_at").
+		Set("updated_at = EXCLUDED.updated_at").
+		Exec(context.Background())
+
+	return int64(len(companies)), err
 }

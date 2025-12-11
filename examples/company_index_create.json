@@ -74,15 +74,15 @@
       },
       "linkedin_url": {
         "type": "text",
-        "analyzer": "uax_url_email"
+        "analyzer": "standard"
       },
       "website": {
         "type": "text",
-        "analyzer": "uax_url_email"
+        "analyzer": "standard"
       },
       "normalized_domain": {
         "type": "text",
-        "analyzer": "uax_url_email"
+        "analyzer": "standard"
       },
       "created_at": {
         "type": "date",
