@@ -70,10 +70,11 @@ type PgContactSvcRepo interface {
 func (t *PgContactStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*PgContact, error) {
 	var contacts []*PgContact
 
-	queryBuilder := t.PgDbClient.NewSelect().Model(&contacts).
-		Where("? ILIKE ?", bun.Ident(query.FilterKey), "%"+query.SearchText+"%")
+	queryBuilder := t.PgDbClient.NewSelect().Model(&contacts)
 
-	// fetch only filter column
+	if query.SearchText != "" {
+		queryBuilder = queryBuilder.Where("? ILIKE ?", bun.Ident(query.FilterKey), "%"+query.SearchText+"%")
+	}
 	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
 	if query.Page > 0 {
 		queryBuilder = queryBuilder.Offset((query.Page - 1) * query.Limit)

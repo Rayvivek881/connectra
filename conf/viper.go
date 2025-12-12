@@ -14,6 +14,7 @@ type app struct {
 	ParallelJobs   int    `mapstructure:"PARALLEL_JOBS"`
 	InQueueSize    int    `mapstructure:"IN_QUEUE_SIZE"`
 	TickerInterval int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
+	APIKey         string `mapstructure:"API_KEY"`
 }
 
 type database struct {

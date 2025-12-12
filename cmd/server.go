@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"vivek-ray/middleware"
 	"vivek-ray/modules/companies"
 	"vivek-ray/modules/contacts"
 
@@ -30,7 +31,6 @@ func startServer() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
@@ -39,6 +39,11 @@ func startServer() {
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
 		AllowCredentials: false,
 	}))
+
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	router.Use(middleware.RateLimiter())
+	router.Use(middleware.APIKeyAuth())
 
 	router.SetTrustedProxies(nil)
 

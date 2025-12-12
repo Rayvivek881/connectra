@@ -64,8 +64,10 @@ func (t *PgCompanyStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*PgCompan
 	var companies []*PgCompany
 
 	// fetch only filter column
-	queryBuilder := t.PgDbClient.NewSelect().Model(&companies).
-		Where("? ILIKE ?", bun.Ident(query.FilterKey), "%"+query.SearchText+"%")
+	queryBuilder := t.PgDbClient.NewSelect().Model(&companies)
+	if query.SearchText != "" {
+		queryBuilder = queryBuilder.Where("? ILIKE ?", bun.Ident(query.FilterKey), "%"+query.SearchText+"%")
+	}
 
 	query.Limit = utilities.InlineIf(query.Limit > 0, query.Limit, constants.DefaultPageSize).(int)
 	if query.Page > 0 {
