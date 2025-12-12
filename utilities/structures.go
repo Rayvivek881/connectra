@@ -35,9 +35,11 @@ type WhereStruct struct {
 }
 
 type NQLQuery struct {
-	Where       WhereStruct   `json:"where"`
-	OrderBy     []FilterOrder `json:"order_by,omitempty"`
-	SearchAfter []string      `json:"search_after,omitempty"`
+	Where WhereStruct `json:"where"`
+
+	OrderBy       []FilterOrder `json:"order_by,omitempty"`
+	SearchAfter   []string      `json:"search_after,omitempty"`
+	SelectColumns []string      `json:"select_columns,omitempty"`
 
 	Page  int `json:"page,omitempty"`
 	Limit int `json:"limit,omitempty"`

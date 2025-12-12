@@ -33,7 +33,7 @@ func (s *CompanyService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCo
 	for _, company := range elasticCompanies {
 		companyUuids = append(companyUuids, company.Id)
 	}
-	return s.companyPgRepository.ListByFilters(models.PgCompanyFilters{Uuids: companyUuids})
+	return s.companyPgRepository.ListByFilters(models.PgCompanyFilters{Uuids: companyUuids, SelectColumns: query.SelectColumns})
 }
 
 func (s *CompanyService) CountByFilters(query utilities.NQLQuery) (int64, error) {

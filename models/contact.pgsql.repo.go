@@ -19,10 +19,11 @@ func PgContactRepository(db *bun.DB) PgContactSvcRepo {
 }
 
 type PgContactFilters struct {
-	Uuids        []string
-	CompanyIds   []string
-	Emails       []string
-	MobilePhones []string
+	Uuids         []string
+	CompanyIds    []string
+	Emails        []string
+	MobilePhones  []string
+	SelectColumns []string
 
 	Page  int
 	Limit int
@@ -58,6 +59,10 @@ func (f *PgContactFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.MobilePhones) > 0 {
 		query.Where("mobile_phone IN (?)", bun.In(f.MobilePhones))
 	}
+	if len(f.SelectColumns) > 0 {
+		query.Column(f.SelectColumns...)
+	}
+
 	return query
 }
 

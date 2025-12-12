@@ -22,6 +22,7 @@ type PgCompanyFilters struct {
 	Uuids             []string
 	Names             []string
 	NormalizedDomains []string
+	SelectColumns     []string
 
 	Page  int
 	Limit int
@@ -51,6 +52,10 @@ func (f *PgCompanyFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.NormalizedDomains) > 0 {
 		query.Where("normalized_domain IN (?)", bun.In(f.NormalizedDomains))
 	}
+	if len(f.SelectColumns) > 0 {
+		query.Column(f.SelectColumns...)
+	}
+
 	return query
 }
 

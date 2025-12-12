@@ -33,7 +33,7 @@ func (s *ContactService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCo
 	for _, contact := range elasticContacts {
 		contactUuids = append(contactUuids, contact.Id)
 	}
-	return s.contactPgRepository.ListByFilters(models.PgContactFilters{Uuids: contactUuids})
+	return s.contactPgRepository.ListByFilters(models.PgContactFilters{Uuids: contactUuids, SelectColumns: query.SelectColumns})
 }
 
 func (s *ContactService) CountByFilters(query utilities.NQLQuery) (int64, error) {
