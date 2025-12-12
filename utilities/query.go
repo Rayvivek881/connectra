@@ -49,8 +49,17 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 				"match": map[string]any{
 					condition.FilterKey: map[string]any{
 						"query":     condition.TextValue,
-						"operator":  condition.Operator,
+						"operator":  InlineIf(condition.Operator != "", condition.Operator, "and"),
 						"fuzziness": InlineIf(condition.Fuzzy, "AUTO", 0),
+					},
+				},
+			})
+		case constants.SearchTypeSubstring:
+			queryMap[condition.FilterKey] = append(queryMap[condition.FilterKey], map[string]any{
+				"match": map[string]any{
+					condition.FilterKey + ".ngram": map[string]any{
+						"query":    condition.TextValue,
+						"operator": InlineIf(condition.Operator != "", condition.Operator, "and"),
 					},
 				},
 			})
