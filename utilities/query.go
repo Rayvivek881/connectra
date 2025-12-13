@@ -185,7 +185,7 @@ func (q *NQLQuery) addSort(resultQuery map[string]any) {
 }
 
 func (q *NQLQuery) ToElasticsearchQuery(forCount bool) map[string]any {
-	resultQuery := make(map[string]any)
+	resultQuery := map[string]any{"_source": []string{"id"}}
 	if !forCount {
 		q.addPagination(resultQuery)
 		q.addSort(resultQuery)
