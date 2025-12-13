@@ -5,7 +5,7 @@ import (
 	"vivek-ray/constants"
 )
 
-func (q *NQLQuery) isEmpty() bool {
+func (q *VQLQuery) isEmpty() bool {
 	queries := []ElasticQuery{
 		q.Where.RangeQuery,
 		q.Where.KeywordMatch,
@@ -124,7 +124,7 @@ func buildKeywordQueries(conditions map[string]any) []map[string]any {
 	return queries
 }
 
-func (q *NQLQuery) buildBoolQuery() map[string]any {
+func (q *VQLQuery) buildBoolQuery() map[string]any {
 	mustQuery := buildTextQueries(q.Where.TextMatch.Must, true)
 	mustNotQuery := buildTextQueries(q.Where.TextMatch.MustNot, false)
 
@@ -152,7 +152,7 @@ func (q *NQLQuery) buildBoolQuery() map[string]any {
 	return boolQuery
 }
 
-func (q *NQLQuery) addPagination(resultQuery map[string]any) {
+func (q *VQLQuery) addPagination(resultQuery map[string]any) {
 	if len(q.SearchAfter) > 0 {
 		resultQuery["search_after"] = q.SearchAfter
 	}
@@ -162,7 +162,7 @@ func (q *NQLQuery) addPagination(resultQuery map[string]any) {
 	resultQuery["size"] = InlineIf(q.Limit > 0, q.Limit, constants.DefaultPageSize)
 }
 
-func (q *NQLQuery) addSort(resultQuery map[string]any) {
+func (q *VQLQuery) addSort(resultQuery map[string]any) {
 	if len(q.OrderBy) > 0 {
 		sort := make([]map[string]any, 0, len(q.OrderBy))
 		for _, order := range q.OrderBy {
@@ -184,7 +184,7 @@ func (q *NQLQuery) addSort(resultQuery map[string]any) {
 	}
 }
 
-func (q *NQLQuery) ToElasticsearchQuery(forCount bool) map[string]any {
+func (q *VQLQuery) ToElasticsearchQuery(forCount bool) map[string]any {
 	resultQuery := map[string]any{"_source": []string{"id"}}
 	if !forCount {
 		q.addPagination(resultQuery)

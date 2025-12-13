@@ -19,11 +19,11 @@ func NewCompanyService() CompanySvcRepo {
 }
 
 type CompanySvcRepo interface {
-	ListByFilters(query utilities.NQLQuery) ([]*models.PgCompany, error)
-	CountByFilters(query utilities.NQLQuery) (int64, error)
+	ListByFilters(query utilities.VQLQuery) ([]*models.PgCompany, error)
+	CountByFilters(query utilities.VQLQuery) (int64, error)
 }
 
-func (s *CompanyService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCompany, error) {
+func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]*models.PgCompany, error) {
 	elasticQuery := query.ToElasticsearchQuery(false)
 	elasticCompanies, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
@@ -36,7 +36,7 @@ func (s *CompanyService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCo
 	return s.companyPgRepository.ListByFilters(models.PgCompanyFilters{Uuids: companyUuids, SelectColumns: query.SelectColumns})
 }
 
-func (s *CompanyService) CountByFilters(query utilities.NQLQuery) (int64, error) {
+func (s *CompanyService) CountByFilters(query utilities.VQLQuery) (int64, error) {
 	elasticQuery := query.ToElasticsearchQuery(true)
 	return s.companyElasticRepository.CountByQueryMap(elasticQuery)
 }

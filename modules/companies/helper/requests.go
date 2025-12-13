@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func BindAndValidateNQLQuery(c *gin.Context) (utilities.NQLQuery, error) {
-	var query utilities.NQLQuery
+func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
+	var query utilities.VQLQuery
 	if err := c.ShouldBindJSON(&query); err != nil {
 		return query, err
 	}

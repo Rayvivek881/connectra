@@ -19,11 +19,11 @@ func NewContactService() ContactSvcRepo {
 }
 
 type ContactSvcRepo interface {
-	ListByFilters(query utilities.NQLQuery) ([]*models.PgContact, error)
-	CountByFilters(query utilities.NQLQuery) (int64, error)
+	ListByFilters(query utilities.VQLQuery) ([]*models.PgContact, error)
+	CountByFilters(query utilities.VQLQuery) (int64, error)
 }
 
-func (s *ContactService) ListByFilters(query utilities.NQLQuery) ([]*models.PgContact, error) {
+func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]*models.PgContact, error) {
 	elasticQuery := query.ToElasticsearchQuery(false)
 	elasticContacts, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
@@ -36,7 +36,7 @@ func (s *ContactService) ListByFilters(query utilities.NQLQuery) ([]*models.PgCo
 	return s.contactPgRepository.ListByFilters(models.PgContactFilters{Uuids: contactUuids, SelectColumns: query.SelectColumns})
 }
 
-func (s *ContactService) CountByFilters(query utilities.NQLQuery) (int64, error) {
+func (s *ContactService) CountByFilters(query utilities.VQLQuery) (int64, error) {
 	elasticQuery := query.ToElasticsearchQuery(true)
 	return s.contactElasticRepository.CountByQueryMap(elasticQuery)
 }

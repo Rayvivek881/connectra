@@ -9,7 +9,7 @@ import (
 )
 
 func GetCompaniesByFilter(c *gin.Context) {
-	query, err := helper.BindAndValidateNQLQuery(c)
+	query, err := helper.BindAndValidateVQLQuery(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
@@ -23,7 +23,7 @@ func GetCompaniesByFilter(c *gin.Context) {
 }
 
 func GetCompaniesCountByFilter(c *gin.Context) {
-	query, err := helper.BindAndValidateNQLQuery(c)
+	query, err := helper.BindAndValidateVQLQuery(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return

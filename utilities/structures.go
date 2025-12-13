@@ -34,7 +34,7 @@ type WhereStruct struct {
 	RangeQuery   ElasticQuery   `json:"range_query"`
 }
 
-type NQLQuery struct {
+type VQLQuery struct { // vivek Query Language
 	Where WhereStruct `json:"where"`
 
 	OrderBy       []FilterOrder `json:"order_by,omitempty"`
