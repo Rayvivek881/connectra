@@ -10,11 +10,12 @@ import (
 type Viper struct{}
 
 type app struct {
-	ENV            string `mapstructure:"APP_ENV"`
-	ParallelJobs   int    `mapstructure:"PARALLEL_JOBS"`
-	InQueueSize    int    `mapstructure:"IN_QUEUE_SIZE"`
-	TickerInterval int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
-	APIKey         string `mapstructure:"API_KEY"`
+	ENV                  string `mapstructure:"APP_ENV"`
+	ParallelJobs         int    `mapstructure:"PARALLEL_JOBS"`
+	InQueueSize          int    `mapstructure:"IN_QUEUE_SIZE"`
+	TickerInterval       int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
+	APIKey               string `mapstructure:"API_KEY"`
+	MaxRequestsPerMinute int    `mapstructure:"MAX_REQUESTS_PER_MINUTE"`
 }
 
 type database struct {

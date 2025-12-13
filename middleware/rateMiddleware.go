@@ -4,15 +4,17 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"vivek-ray/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	tokens   int
-	maxLimit int
-	mu       sync.Mutex
-	once     sync.Once
+	tokens      int
+	maxLimit    int
+	fillingRate int
+	mu          sync.Mutex
+	once        sync.Once
 )
 
 func startTokenRefiller() {
@@ -22,7 +24,7 @@ func startTokenRefiller() {
 		for range ticker.C {
 			mu.Lock()
 			if tokens < maxLimit {
-				tokens++
+				tokens = min(maxLimit, tokens+fillingRate)
 			}
 			mu.Unlock()
 		}
@@ -31,8 +33,8 @@ func startTokenRefiller() {
 
 func RateLimiter() gin.HandlerFunc {
 	once.Do(func() {
-		maxLimit = 60
-		tokens = maxLimit
+		maxLimit = conf.AppConfig.MaxRequestsPerMinute
+		tokens, fillingRate = maxLimit, maxLimit/60
 		startTokenRefiller()
 	})
 

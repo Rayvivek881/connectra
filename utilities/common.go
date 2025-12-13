@@ -2,7 +2,6 @@ package utilities
 
 import (
 	"bytes"
-	"cmp"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -54,14 +53,6 @@ func InlineIf(condition bool, trueValue any, falseValue any) any {
 		return trueValue
 	}
 	return falseValue
-}
-
-func Max[T cmp.Ordered](a, b T) T {
-	return InlineIf(a > b, a, b).(T)
-}
-
-func Min[T cmp.Ordered](a, b T) T {
-	return InlineIf(a < b, a, b).(T)
 }
 
 func ValidatePageSize(limit int) error {
