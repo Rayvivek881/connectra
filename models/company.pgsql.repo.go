@@ -53,7 +53,7 @@ func (f *PgCompanyFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 		query.Where("normalized_domain IN (?)", bun.In(f.NormalizedDomains))
 	}
 	if len(f.SelectColumns) > 0 {
-		query.Column(f.SelectColumns...)
+		query.Column(utilities.UniqueStringSlice(f.SelectColumns)...)
 	}
 
 	return query

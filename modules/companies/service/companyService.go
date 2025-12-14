@@ -24,7 +24,8 @@ type CompanySvcRepo interface {
 }
 
 func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]*models.PgCompany, error) {
-	elasticQuery := query.ToElasticsearchQuery(false)
+	sourcefields := []string{"id"}
+	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
 	elasticCompanies, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
@@ -37,6 +38,6 @@ func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]*models.PgCo
 }
 
 func (s *CompanyService) CountByFilters(query utilities.VQLQuery) (int64, error) {
-	elasticQuery := query.ToElasticsearchQuery(true)
+	elasticQuery := query.ToElasticsearchQuery(true, []string{})
 	return s.companyElasticRepository.CountByQueryMap(elasticQuery)
 }

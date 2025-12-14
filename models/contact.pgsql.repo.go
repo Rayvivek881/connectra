@@ -59,8 +59,9 @@ func (f *PgContactFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.MobilePhones) > 0 {
 		query.Where("mobile_phone IN (?)", bun.In(f.MobilePhones))
 	}
+
 	if len(f.SelectColumns) > 0 {
-		query.Column(f.SelectColumns...)
+		query.Column(utilities.UniqueStringSlice(f.SelectColumns)...)
 	}
 
 	return query

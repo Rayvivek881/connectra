@@ -15,7 +15,7 @@
         "filter": {
           "ngram_filter": {
             "type": "ngram",
-            "min_gram": 3,
+            "min_gram": 5,
             "max_gram": 10
           }
         }
@@ -25,48 +25,44 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "keyword",
-        "doc_values": true
+        "type": "keyword"
       },
+
       "first_name": {
         "type": "text",
         "analyzer": "standard",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "ngram_analyzer"
-          }
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
         }
       },
       "last_name": {
         "type": "text",
         "analyzer": "standard",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "ngram_analyzer"
-          }
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
         }
       },
+
       "company_id": {
         "type": "keyword"
       },
+
       "email": {
         "type": "keyword"
       },
+
       "title": {
         "type": "text",
         "analyzer": "standard",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "ngram_analyzer"
-          }
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
         }
       },
+
       "departments": {
         "type": "keyword"
       },
+
       "mobile_phone": {
         "type": "keyword"
       },
@@ -76,6 +72,7 @@
       "seniority": {
         "type": "keyword"
       },
+
       "city": {
         "type": "text",
         "analyzer": "standard"
@@ -88,10 +85,82 @@
         "type": "text",
         "analyzer": "standard"
       },
+
       "linkedin_url": {
         "type": "text",
         "analyzer": "standard"
       },
+
+      "company_name": {
+        "type": "text",
+        "fields": {
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
+        }
+      },
+
+      "company_employees_count": {
+        "type": "long"
+      },
+
+      "company_industries": {
+        "type": "keyword"
+      },
+
+      "company_keywords": {
+        "type": "keyword"
+      },
+
+      "company_address": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+
+      "company_annual_revenue": {
+        "type": "long"
+      },
+
+      "company_total_funding": {
+        "type": "long"
+      },
+
+      "company_technologies": {
+        "type": "keyword"
+      },
+
+      "company_city": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+
+      "company_state": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+
+      "company_country": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+
+      "company_linkedin_url": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+
+      "company_website": {
+        "type": "text",
+        "fields": {
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
+        }
+      },
+
+      "company_normalized_domain": {
+        "type": "text",
+        "fields": {
+          "ngram": { "type": "text", "analyzer": "ngram_analyzer" }
+        }
+      },
+
       "created_at": {
         "type": "date",
         "format": "strict_date_optional_time||epoch_millis"
@@ -99,4 +168,3 @@
     }
   }
 }
-

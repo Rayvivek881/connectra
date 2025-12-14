@@ -34,12 +34,18 @@ type WhereStruct struct {
 	RangeQuery   ElasticQuery   `json:"range_query"`
 }
 
+type CompanyConfig struct {
+	Populate      bool     `json:"populate,omitempty"`
+	SelectColumns []string `json:"select_columns,omitempty"`
+}
+
 type VQLQuery struct { // vivek Query Language
 	Where WhereStruct `json:"where"`
 
-	OrderBy       []FilterOrder `json:"order_by,omitempty"`
-	SearchAfter   []string      `json:"search_after,omitempty"`
-	SelectColumns []string      `json:"select_columns,omitempty"`
+	OrderBy       []FilterOrder  `json:"order_by,omitempty"`
+	SearchAfter   []string       `json:"search_after,omitempty"`
+	SelectColumns []string       `json:"select_columns,omitempty"`
+	CompanyConfig *CompanyConfig `json:"company_config,omitempty"`
 
 	Page  int `json:"page,omitempty"`
 	Limit int `json:"limit,omitempty"`

@@ -184,10 +184,10 @@ func (q *VQLQuery) addSort(resultQuery map[string]any) {
 	}
 }
 
-func (q *VQLQuery) ToElasticsearchQuery(forCount bool) map[string]any {
-	resultQuery := make(map[string]any, 0)
+func (q *VQLQuery) ToElasticsearchQuery(forCount bool, sourceFields []string) map[string]any {
+	resultQuery := make(map[string]any)
 	if !forCount {
-		resultQuery["_source"] = []string{"id"}
+		resultQuery["_source"] = sourceFields
 		q.addPagination(resultQuery)
 		q.addSort(resultQuery)
 	}

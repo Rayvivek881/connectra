@@ -1,6 +1,8 @@
 package helper
 
-import "vivek-ray/models"
+import (
+	"vivek-ray/models"
+)
 
 type FilterDataResponse struct {
 	Value        string `json:"value"`
@@ -16,4 +18,9 @@ func ToFilterDataResponses(data []*models.ModelFilterData) []FilterDataResponse 
 		})
 	}
 	return responses
+}
+
+type ContactResponse struct {
+	*models.PgContact
+	Company *models.PgCompany `json:"company,omitempty"`
 }
