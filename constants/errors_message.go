@@ -22,4 +22,5 @@ var (
 
 	PageSizeExceededError   = errors.New("page size exceeds maximum limit")
 	PageNumberExceededError = errors.New("page number exceeds maximum limit")
+	FailedToFetchDataError  = errors.New("failed to fetch data")
 )

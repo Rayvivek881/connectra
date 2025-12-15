@@ -3,6 +3,7 @@ package service
 import (
 	"sync"
 	"vivek-ray/connections"
+	"vivek-ray/constants"
 	"vivek-ray/models"
 	"vivek-ray/modules/contacts/helper"
 	"vivek-ray/utilities"
@@ -39,7 +40,6 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 		contactUuids = append(contactUuids, contact.Id)
 		companyIds = append(companyIds, contact.CompanyID)
 	}
-
 	if len(query.SelectColumns) != 0 {
 		query.SelectColumns = append(query.SelectColumns, "company_id")
 	}
@@ -50,34 +50,31 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 		contactErr error
 		companyErr error
 	)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		pgContacts, contactErr = s.contactPgRepository.ListByFilters(models.PgContactFilters{
+			Uuids:         utilities.UniqueStringSlice(contactUuids),
+			SelectColumns: query.SelectColumns,
+		})
+	}()
+
 	shouldPopulateCompanies := query.CompanyConfig != nil && query.CompanyConfig.Populate
 	if shouldPopulateCompanies {
-		var wg sync.WaitGroup
-		wg.Add(2)
-
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			pgContacts, contactErr = s.contactPgRepository.ListByFilters(models.PgContactFilters{Uuids: contactUuids, SelectColumns: query.SelectColumns})
+			companies, companyErr = s.companyPgRepository.ListByFilters(models.PgCompanyFilters{
+				Uuids:         utilities.UniqueStringSlice(companyIds),
+				SelectColumns: query.CompanyConfig.SelectColumns,
+			})
 		}()
+	}
+	wg.Wait()
 
-		go func() {
-			defer wg.Done()
-			companies, companyErr = s.companyPgRepository.ListByFilters(models.PgCompanyFilters{Uuids: companyIds, SelectColumns: query.CompanyConfig.SelectColumns})
-		}()
-
-		wg.Wait()
-
-		if contactErr != nil {
-			return nil, contactErr
-		}
-		if companyErr != nil {
-			return nil, companyErr
-		}
-	} else {
-		pgContacts, err = s.contactPgRepository.ListByFilters(models.PgContactFilters{Uuids: contactUuids, SelectColumns: query.SelectColumns})
-		if err != nil {
-			return nil, err
-		}
+	if contactErr != nil || companyErr != nil {
+		return nil, constants.FailedToFetchDataError
 	}
 
 	for _, contact := range pgContacts {
