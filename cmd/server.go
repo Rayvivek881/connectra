@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"vivek-ray/middleware"
+	"vivek-ray/modules/auth"
 	"vivek-ray/modules/companies"
 	"vivek-ray/modules/contacts"
 
@@ -43,7 +44,7 @@ func startServer() {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	router.Use(middleware.RateLimiter())
-	router.Use(middleware.APIKeyAuth())
+	// router.Use(middleware.APIKeyAuth())
 
 	router.SetTrustedProxies(nil)
 
@@ -52,8 +53,14 @@ func startServer() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	// Ensure auth tables exist
+	if err := auth.EnsureTables(); err != nil {
+		log.Error().Err(err).Msg("Error creating auth tables")
+	}
+
 	companies.Routes(router.Group("/companies"))
 	contacts.Routes(router.Group("/contacts"))
+	auth.Routes(router.Group("/auth"))
 
 	log.Info().Msg("Starting server on :8000")
 	if err := router.Run(":8000"); err != nil {

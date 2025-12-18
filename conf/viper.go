@@ -16,6 +16,7 @@ type app struct {
 	TickerInterval       int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
 	APIKey               string `mapstructure:"API_KEY"`
 	MaxRequestsPerMinute int    `mapstructure:"MAX_REQUESTS_PER_MINUTE"`
+	JWTSecret            string `mapstructure:"JWT_SECRET"`
 }
 
 type database struct {
