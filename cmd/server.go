@@ -36,7 +36,7 @@ func startServer() {
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-API-Key"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
 		AllowCredentials: false,
 	}))
@@ -44,23 +44,20 @@ func startServer() {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	router.Use(middleware.RateLimiter())
-	// router.Use(middleware.APIKeyAuth())
-
-	router.SetTrustedProxies(nil)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Ensure auth tables exist
-	if err := auth.EnsureTables(); err != nil {
-		log.Error().Err(err).Msg("Error creating auth tables")
-	}
+	auth.Routes(router.Group("/auth"))
+
+	router.SetTrustedProxies(nil)
+
+	router.Use(middleware.JWTAuth())
 
 	companies.Routes(router.Group("/companies"))
 	contacts.Routes(router.Group("/contacts"))
-	auth.Routes(router.Group("/auth"))
 
 	log.Info().Msg("Starting server on :8000")
 	if err := router.Run(":8000"); err != nil {

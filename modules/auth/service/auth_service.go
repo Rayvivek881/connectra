@@ -24,9 +24,10 @@ func NewAuthService() *AuthService {
 }
 
 type RegisterRequest struct {
-	Email    string      `json:"email"`
-	Password string      `json:"password"`
-	Role     models.Role `json:"role"`
+	Email       string             `json:"email"`
+	Password    string             `json:"password"`
+	Role        models.Role        `json:"role"`
+	Geolocation models.Geolocation `json:"geolocation"`
 }
 
 type LoginRequest struct {
@@ -53,10 +54,11 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*mode
 	}
 
 	user := &models.User{
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Role:     req.Role, // Default role
-		Credits:  50,       // Default credits
+		Email:       req.Email,
+		Password:    string(hashedPassword),
+		Role:        req.Role, // Default role
+		Credits:     50,       // Default credits
+		Geolocation: req.Geolocation,
 	}
 
 	if err := s.repo.CreateUser(ctx, user); err != nil {

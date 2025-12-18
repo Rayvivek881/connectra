@@ -7,6 +7,7 @@ import (
 )
 
 func Routes(router *gin.RouterGroup) {
+
 	router.POST("/", controller.GetCompaniesByFilter)
 	router.POST("/count", controller.GetCompaniesCountByFilter)
 

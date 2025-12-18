@@ -11,7 +11,7 @@ import (
 
 func Routes(r *gin.RouterGroup) {
 	authController := controller.NewAuthController()
-	println("Auth routes")
+
 	r.POST("/register", authController.Register)
 	r.POST("/login", authController.Login)
 

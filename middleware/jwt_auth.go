@@ -21,6 +21,7 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
 		if tokenString == authHeader {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
 			c.Abort()
