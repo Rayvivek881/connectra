@@ -33,3 +33,19 @@ func GetFilterData(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"data": result, "success": true})
 }
+
+func UpdateActiveStatus(c *gin.Context) {
+	statusUpdate, err := helper.BindFilterUpdateStatus(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
+		return
+	}
+
+	err = service.NewFilterService().UpdateActiveStatus(statusUpdate.FilterKey, statusUpdate.Active)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type FilterStatusUpdate struct {
+	Active    bool   `json:"active" binding:"required"`
+	FilterKey string `json:"filter_key" binding:"required"`
+}
+
 func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
 	var query utilities.VQLQuery
 	if err := c.ShouldBindJSON(&query); err != nil {
@@ -30,4 +35,11 @@ func BindAndValidateFiltersDataQuery(c *gin.Context) (models.FiltersDataQuery, e
 	}
 	query.Service = constants.CompaniesService
 	return query, nil
+}
+
+func BindFilterUpdateStatus(c *gin.Context) (FilterStatusUpdate, error) {
+	var statusUpdate FilterStatusUpdate
+	err := c.ShouldBindJSON(&statusUpdate)
+
+	return statusUpdate, err
 }

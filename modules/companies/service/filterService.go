@@ -28,6 +28,7 @@ func NewFilterService() FilterSvcRepo {
 type FilterSvcRepo interface {
 	GetFilters() ([]*models.ModelFilter, error)
 	GetFilterData(query models.FiltersDataQuery) ([]helper.FilterDataResponse, error)
+	UpdateActiveStatus(key string, status bool) error
 }
 
 func (s *FilterService) GetFilters() ([]*models.ModelFilter, error) {
@@ -61,4 +62,8 @@ func (s *FilterService) GetFilterData(query models.FiltersDataQuery) ([]helper.F
 		}
 	}
 	return result, err
+}
+
+func (s *FilterService) UpdateActiveStatus(key string, status bool) error {
+	return s.filtersRepository.UpdateActiveStatus(key, constants.CompaniesService, status)
 }
