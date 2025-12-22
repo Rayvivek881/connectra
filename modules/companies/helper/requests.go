@@ -9,8 +9,8 @@ import (
 )
 
 type FilterStatusUpdate struct {
-	Active    bool   `json:"active" binding:"required"`
-	FilterKey string `json:"filter_key" binding:"required"`
+	Active    bool   `json:"active"`
+	FilterKey string `json:"filter_key"`
 }
 
 func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
