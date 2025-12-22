@@ -23,13 +23,15 @@ type FiltersSvcRepo interface {
 
 func (t *FiltersStruct) GetFiltersByService(service string) ([]*ModelFilter, error) {
 	var filters []*ModelFilter
-	err := t.PgDbClient.NewSelect().Model(&filters).Where("service = ?", service).Scan(context.Background())
+	err := t.PgDbClient.NewSelect().Model(&filters).Where("deleted_at IS NULL").
+		Where("service = ?", service).Scan(context.Background())
 	return filters, err
 }
 
 func (t *FiltersStruct) GetFilterByKeyAndService(service, key string) (ModelFilter, error) {
 	var filter ModelFilter
-	err := t.PgDbClient.NewSelect().Model(&filter).Where("service = ? AND key = ?", service, key).Scan(context.Background())
+	err := t.PgDbClient.NewSelect().Model(&filter).Where("deleted_at IS NULL").
+		Where("service = ? AND key = ?", service, key).Scan(context.Background())
 
 	return filter, err
 }
