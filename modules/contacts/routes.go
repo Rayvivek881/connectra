@@ -11,5 +11,6 @@ func Routes(router *gin.RouterGroup) {
 	router.POST("/count", controller.GetContactsCountByFilter)
 
 	router.GET("/filters", controller.GetFilters)
+	router.PUT("/filters", controller.UpdateActiveStatus)
 	router.POST("/filters/data", controller.GetFilterData)
 }
