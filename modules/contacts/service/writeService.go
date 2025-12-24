@@ -3,9 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 	"vivek-ray/connections"
+	"vivek-ray/constants"
 	"vivek-ray/models"
+	"vivek-ray/utilities"
 )
 
 type ContactWriteService struct {
@@ -31,9 +34,14 @@ type ContactWriteSvcRepo interface {
 }
 
 type BulkUpsertResult struct {
-	Created int64 `json:"created"`
-	Updated int64 `json:"updated"`
-	Total   int64 `json:"total"`
+	Created              int64         `json:"created"`
+	Updated              int64         `json:"updated"`
+	Total                int64         `json:"total"`
+	BatchesProcessed     int64         `json:"batches_processed"`
+	ElasticsearchIndexed int64         `json:"elasticsearch_indexed"`
+	ElasticsearchFailed  int64         `json:"elasticsearch_failed"`
+	ProcessingTime       time.Duration `json:"processing_time"`
+	Errors               []string      `json:"errors,omitempty"`
 }
 
 // Create creates a new contact in PostgreSQL and indexes it in Elasticsearch
@@ -248,12 +256,13 @@ func (s *ContactWriteService) Upsert(contact *models.PgContact) (*models.PgConta
 	return contact, isNew, nil
 }
 
-// BulkUpsert performs bulk upsert of contacts
+// BulkUpsert performs bulk upsert of contacts with batch processing
 func (s *ContactWriteService) BulkUpsert(contacts []models.PgContact) (*BulkUpsertResult, error) {
 	if len(contacts) == 0 {
 		return &BulkUpsertResult{}, nil
 	}
 
+	startTime := time.Now()
 	ctx := context.Background()
 	now := time.Now()
 
@@ -265,7 +274,7 @@ func (s *ContactWriteService) BulkUpsert(contacts []models.PgContact) (*BulkUpse
 		}
 	}
 
-	// Get existing contact UUIDs
+	// Get existing contact UUIDs to count created vs updated
 	uuids := make([]string, len(contacts))
 	for i, c := range contacts {
 		uuids[i] = c.UUID
@@ -290,60 +299,124 @@ func (s *ContactWriteService) BulkUpsert(contacts []models.PgContact) (*BulkUpse
 	}
 	updated := int64(len(contacts)) - created
 
-	// Begin transaction
-	tx, err := connections.PgDBConnection.Client.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Convert to pointers
-	contactPtrs := make([]*models.PgContact, len(contacts))
-	for i := range contacts {
-		contactPtrs[i] = &contacts[i]
+	// Optimize company data fetching: collect all unique company IDs
+	companyIDSet := make(map[string]bool)
+	for _, c := range contacts {
+		if c.CompanyID != "" {
+			companyIDSet[c.CompanyID] = true
+		}
 	}
 
-	// Bulk upsert
-	_, err = s.contactPgRepository.BulkUpsert(contactPtrs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bulk upsert contacts: %w", err)
+	// Batch fetch all companies needed for denormalization
+	companyIDs := make([]string, 0, len(companyIDSet))
+	for id := range companyIDSet {
+		companyIDs = append(companyIDs, id)
 	}
 
-	// Commit transaction
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Index all contacts in Elasticsearch (async)
-	go func() {
-		for i := range contactPtrs {
-			if err := s.indexContactInElasticsearch(contactPtrs[i]); err != nil {
-				fmt.Printf("Warning: Failed to index contact %s in Elasticsearch: %v\n", contactPtrs[i].UUID, err)
+	companyMap := make(map[string]*models.PgCompany)
+	if len(companyIDs) > 0 {
+		companies, err := s.companyPgRepository.ListByFilters(models.PgCompanyFilters{
+			Uuids: companyIDs,
+		})
+		if err == nil {
+			for i := range companies {
+				companyMap[companies[i].UUID] = companies[i]
 			}
 		}
-	}()
-
-	return &BulkUpsertResult{
-		Created: created,
-		Updated: updated,
-		Total:   int64(len(contacts)),
-	}, nil
-}
-
-// indexContactInElasticsearch indexes a contact in Elasticsearch with company data
-func (s *ContactWriteService) indexContactInElasticsearch(contact *models.PgContact) error {
-	// Fetch company data if company_id is set
-	var company *models.PgCompany
-	if contact.CompanyID != "" {
-		companies, err := s.companyPgRepository.ListByFilters(models.PgCompanyFilters{
-			Uuids: []string{contact.CompanyID},
-		})
-		if err == nil && len(companies) > 0 {
-			company = companies[0]
-		}
 	}
 
-	// Create ElasticContact with denormalized company data
+	// Statistics tracking
+	var (
+		batchesProcessed     int64
+		elasticsearchIndexed int64
+		elasticsearchFailed  int64
+		errors               []string
+		mu                   sync.Mutex
+	)
+
+	// Process in batches
+	batchSize := constants.DefaultBulkBatchSize
+	_, err = utilities.ProcessInBatches(batchSize, contacts, func(batch []models.PgContact) (int, int, error) {
+		// Process PostgreSQL batch
+		contactPtrs := make([]*models.PgContact, len(batch))
+		for i := range batch {
+			contactPtrs[i] = &batch[i]
+		}
+
+		// Begin transaction for this batch
+		tx, err := connections.PgDBConnection.Client.BeginTx(ctx, nil)
+		if err != nil {
+			return 0, len(batch), fmt.Errorf("failed to begin transaction: %w", err)
+		}
+		defer tx.Rollback()
+
+		// Bulk upsert in PostgreSQL
+		_, err = s.contactPgRepository.BulkUpsert(contactPtrs)
+		if err != nil {
+			return 0, len(batch), fmt.Errorf("failed to bulk upsert contacts: %w", err)
+		}
+
+		// Commit transaction
+		if err = tx.Commit(); err != nil {
+			return 0, len(batch), fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
+		// Convert to ElasticContact with denormalized company data and bulk index
+		elasticContacts := make([]*models.ElasticContact, 0, len(batch))
+		for i := range batch {
+			elasticContact := s.convertToElasticContact(&batch[i], companyMap)
+			elasticContacts = append(elasticContacts, elasticContact)
+		}
+
+		// Bulk index in Elasticsearch
+		indexed, err := s.contactElasticRepo.BulkUpsert(elasticContacts)
+		if err != nil {
+			mu.Lock()
+			elasticsearchFailed += int64(len(elasticContacts))
+			errors = append(errors, fmt.Sprintf("batch failed to index in Elasticsearch: %v", err))
+			mu.Unlock()
+		} else {
+			mu.Lock()
+			elasticsearchIndexed += indexed
+			mu.Unlock()
+		}
+
+		mu.Lock()
+		batchesProcessed++
+		mu.Unlock()
+
+		return len(batch), 0, nil
+	})
+
+	if err != nil {
+		mu.Lock()
+		errors = append(errors, err.Error())
+		mu.Unlock()
+	}
+
+	processingTime := time.Since(startTime)
+
+	return &BulkUpsertResult{
+		Created:              created,
+		Updated:              updated,
+		Total:                int64(len(contacts)),
+		BatchesProcessed:     batchesProcessed,
+		ElasticsearchIndexed: elasticsearchIndexed,
+		ElasticsearchFailed:  elasticsearchFailed,
+		ProcessingTime:       processingTime,
+		Errors:               errors,
+	}, err
+}
+
+// convertToElasticContact converts a PgContact to ElasticContact with company data
+func (s *ContactWriteService) convertToElasticContact(contact *models.PgContact, companyMap map[string]*models.PgCompany) *models.ElasticContact {
+	var createdAt time.Time
+	if contact.CreatedAt != nil {
+		createdAt = *contact.CreatedAt
+	} else {
+		createdAt = time.Now()
+	}
+
 	elasticContact := &models.ElasticContact{
 		Id:          contact.UUID,
 		FirstName:   contact.FirstName,
@@ -359,28 +432,51 @@ func (s *ContactWriteService) indexContactInElasticsearch(contact *models.PgCont
 		State:       contact.State,
 		Country:     contact.Country,
 		LinkedinURL: contact.LinkedinURL,
-		CreatedAt:   *contact.CreatedAt,
+		CreatedAt:   createdAt,
 	}
 
 	// Add company data if available
-	if company != nil {
-		elasticContact.CompanyName = company.Name
-		elasticContact.CompanyEmployeesCount = company.EmployeesCount
-		elasticContact.CompanyIndustries = company.Industries
-		elasticContact.CompanyKeywords = company.Keywords
-		elasticContact.CompanyAddress = company.Address
-		elasticContact.CompanyAnnualRevenue = company.AnnualRevenue
-		elasticContact.CompanyTotalFunding = company.TotalFunding
-		elasticContact.CompanyTechnologies = company.Technologies
-		elasticContact.CompanyCity = company.City
-		elasticContact.CompanyState = company.State
-		elasticContact.CompanyCountry = company.Country
-		elasticContact.CompanyLinkedinURL = company.LinkedinURL
-		elasticContact.CompanyWebsite = company.Website
-		elasticContact.CompanyNormalizedDomain = company.NormalizedDomain
+	if contact.CompanyID != "" {
+		if company, ok := companyMap[contact.CompanyID]; ok {
+			elasticContact.CompanyName = company.Name
+			elasticContact.CompanyEmployeesCount = company.EmployeesCount
+			elasticContact.CompanyIndustries = company.Industries
+			elasticContact.CompanyKeywords = company.Keywords
+			elasticContact.CompanyAddress = company.Address
+			elasticContact.CompanyAnnualRevenue = company.AnnualRevenue
+			elasticContact.CompanyTotalFunding = company.TotalFunding
+			elasticContact.CompanyTechnologies = company.Technologies
+			elasticContact.CompanyCity = company.City
+			elasticContact.CompanyState = company.State
+			elasticContact.CompanyCountry = company.Country
+			elasticContact.CompanyLinkedinURL = company.LinkedinURL
+			elasticContact.CompanyWebsite = company.Website
+			elasticContact.CompanyNormalizedDomain = company.NormalizedDomain
+		}
 	}
 
-	// Index in Elasticsearch
+	return elasticContact
+}
+
+// indexContactInElasticsearch indexes a contact in Elasticsearch with company data (used for single operations)
+func (s *ContactWriteService) indexContactInElasticsearch(contact *models.PgContact) error {
+	// Fetch company data if company_id is set
+	var company *models.PgCompany
+	if contact.CompanyID != "" {
+		companies, err := s.companyPgRepository.ListByFilters(models.PgCompanyFilters{
+			Uuids: []string{contact.CompanyID},
+		})
+		if err == nil && len(companies) > 0 {
+			company = companies[0]
+		}
+	}
+
+	companyMap := make(map[string]*models.PgCompany)
+	if company != nil {
+		companyMap[company.UUID] = company
+	}
+
+	elasticContact := s.convertToElasticContact(contact, companyMap)
 	return s.contactElasticRepo.IndexContact(elasticContact)
 }
 
@@ -388,4 +484,3 @@ func (s *ContactWriteService) indexContactInElasticsearch(contact *models.PgCont
 func (s *ContactWriteService) deleteContactFromElasticsearch(uuid string) error {
 	return s.contactElasticRepo.DeleteContact(uuid)
 }
-
