@@ -1,7 +1,10 @@
 package models
 
 import (
+	"fmt"
+	"strings"
 	"time"
+	"vivek-ray/utilities"
 
 	"github.com/uptrace/bun"
 )
@@ -39,6 +42,41 @@ type PgContact struct {
 	CreatedAt *time.Time `bun:"created_at,nullzero,default:current_timestamp" json:"created_at,omitempty"`
 	UpdatedAt *time.Time `bun:"updated_at,nullzero,default:current_timestamp" json:"updated_at,omitempty"`
 	DeletedAt *time.Time `bun:"deleted_at,nullzero" json:"deleted_at,omitempty"`
+}
+
+func PgContactFromRowData(row map[string]string, company *PgCompany) *PgContact {
+	FirstName, LastName := row["first_name"], row["last_name"]
+	LinkedinURL := row["person_linkedin_url"]
+	server_time := time.Now()
+
+	ContactUUID := utilities.GenerateUUID5(fmt.Sprintf("%s%s%s", FirstName, LastName, LinkedinURL))
+	return &PgContact{
+		UUID: ContactUUID,
+
+		FirstName:   FirstName,
+		LastName:    LastName,
+		CompanyID:   company.UUID,
+		Email:       row["email"],
+		Title:       row["title"],
+		Departments: utilities.SplitAndTrim(row["departments"], ","),
+
+		MobilePhone: row["mobile_phone"],
+		EmailStatus: row["email_status"],
+		Seniority:   row["seniority"],
+		City:        strings.ToLower(row["city"]),
+		State:       strings.ToLower(row["state"]),
+		Country:     strings.ToLower(row["country"]),
+		LinkedinURL: LinkedinURL,
+
+		FacebookURL:     row["facebook_url"],
+		TwitterURL:      row["twitter_url"],
+		WorkDirectPhone: row["work_direct_phone"],
+		HomePhone:       row["home_phone"],
+		OtherPhone:      row["other_phone"],
+		Stage:           row["stage"],
+		CreatedAt:       &server_time,
+		UpdatedAt:       &server_time,
+	}
 }
 
 func (c *PgContact) SetDB(db *bun.DB) *PgContact {

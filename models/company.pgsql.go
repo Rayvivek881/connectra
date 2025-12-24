@@ -1,7 +1,10 @@
 package models
 
 import (
+	"fmt"
+	"strings"
 	"time"
+	"vivek-ray/utilities"
 
 	"github.com/uptrace/bun"
 )
@@ -39,6 +42,44 @@ type PgCompany struct {
 	CreatedAt *time.Time `bun:"created_at,nullzero,default:current_timestamp" json:"created_at,omitempty"`
 	UpdatedAt *time.Time `bun:"updated_at,nullzero,default:current_timestamp" json:"updated_at,omitempty"`
 	DeletedAt *time.Time `bun:"deleted_at,nullzero" json:"deleted_at,omitempty"`
+}
+
+func PgCompanyFromRawData(row map[string]string) *PgCompany {
+	companyName, email := row["company"], row["email"]
+	normalizedDomain, linkedinURL := strings.Split(email, "@")[1], row["company_linkedin_url"]
+	server_time := time.Now()
+
+	CompanyUUID := utilities.GenerateUUID5(fmt.Sprintf("%s%s", companyName, linkedinURL))
+	return &PgCompany{
+		UUID: CompanyUUID,
+
+		Name:           companyName,
+		EmployeesCount: utilities.StringToInt64(row["employees"]),
+		Industries:     utilities.SplitAndTrim(row["industry"], ","),
+		Keywords:       utilities.SplitAndTrim(row["keywords"], ","),
+		Address:        row["company_address"],
+		AnnualRevenue:  utilities.StringToInt64(row["annual_revenue"]),
+		TotalFunding:   utilities.StringToInt64(row["total_funding"]),
+		Technologies:   utilities.SplitAndTrim(row["technologies"], ","),
+		Website:        row["website"],
+		LinkedinURL:    linkedinURL,
+		City:           strings.ToLower(row["company_city"]),
+		State:          strings.ToLower(row["company_state"]),
+		Country:        strings.ToLower(row["company_country"]),
+
+		NormalizedDomain: normalizedDomain,
+
+		FacebookURL:          row["facebook_url"],
+		TwitterURL:           row["twitter_url"],
+		CompanyNameForEmails: row["company_name_for_emails"],
+		PhoneNumber:          row["company_phone"],
+		LatestFunding:        row["latest_funding"],
+		LatestFundingAmount:  utilities.StringToInt64(row["latest_funding_amount"]),
+		LastRaisedAt:         row["last_raised_at"],
+
+		CreatedAt: &server_time,
+		UpdatedAt: &server_time,
+	}
 }
 
 func (c *PgCompany) SetDB(db *bun.DB) *PgCompany {

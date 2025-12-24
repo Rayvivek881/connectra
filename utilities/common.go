@@ -5,8 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
+	"unicode"
 	"vivek-ray/constants"
+
+	"github.com/google/uuid"
 )
 
 func GetFieldValue(v interface{}, fieldName string) string {
@@ -79,6 +84,78 @@ func UniqueStringSlice(slice []string) []string {
 		if _, ok := seen[item]; !ok {
 			seen[item] = true
 			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func GetCleanedString(strValue string) string {
+	strValue = strings.TrimFunc(strValue, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+
+	spaceRegex := regexp.MustCompile(`\s+`)
+	return spaceRegex.ReplaceAllString(strValue, " ")
+}
+
+func GenerateUUID5(value string) string {
+	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(value)).String()
+}
+
+func StringToInt64(value string) int64 {
+	if value == "" {
+		return 0
+	}
+	normalized := strings.Map(func(r rune) rune {
+		if unicode.IsDigit(r) {
+			return r
+		}
+		return -1
+	}, value)
+
+	if normalized == "" {
+		return 0
+	}
+
+	result, err := strconv.ParseInt(normalized, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return result
+}
+
+func StringToFloat64(value string) float64 {
+	if value == "" {
+		return 0
+	}
+	normalized := strings.Map(func(r rune) rune {
+		if unicode.IsDigit(r) || r == '.' {
+			return r
+		}
+		return -1
+	}, value)
+
+	if normalized == "" {
+		return 0
+	}
+
+	result, err := strconv.ParseFloat(normalized, 64)
+	if err != nil {
+		return 0
+	}
+	return result
+}
+
+func SplitAndTrim(value, sep string) []string {
+	if value == "" {
+		return []string{}
+	}
+	parts := strings.Split(value, sep)
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(strings.ToLower(part))
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
 	return result

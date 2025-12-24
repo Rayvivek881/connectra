@@ -11,11 +11,14 @@ type Viper struct{}
 
 type app struct {
 	ENV                  string `mapstructure:"APP_ENV"`
-	ParallelJobs         int    `mapstructure:"PARALLEL_JOBS"`
-	InQueueSize          int    `mapstructure:"IN_QUEUE_SIZE"`
-	TickerInterval       int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
 	APIKey               string `mapstructure:"API_KEY"`
 	MaxRequestsPerMinute int    `mapstructure:"MAX_REQUESTS_PER_MINUTE"`
+}
+
+type jobConfig struct {
+	JobInQueuedSize int `mapstructure:"JOB_IN_QUEUE_SIZE"`
+	ParallelJobs    int `mapstructure:"PARALLEL_JOBS"`
+	TickerInterval  int `mapstructure:"TICKER_INTERVAL_MINUTES"`
 }
 
 type database struct {
@@ -54,6 +57,7 @@ var AppConfig = &app{}
 var DatabaseConfig = &database{}
 var SearchEngineConfig = &searchEngine{}
 var S3StorageConfig = &s3Storage{}
+var JobConfig = &jobConfig{}
 
 func (v *Viper) Init() {
 	viper.AddConfigPath("./")
@@ -70,6 +74,7 @@ func (v *Viper) Init() {
 	v.unmarshal(&DatabaseConfig)
 	v.unmarshal(&SearchEngineConfig)
 	v.unmarshal(&S3StorageConfig)
+	v.unmarshal(&JobConfig)
 
 	log.Info().Msgf("Viper initialized successfully")
 }
@@ -86,6 +91,7 @@ func (v *Viper) setDefaults() {
 		reflect.VisibleFields(reflect.TypeOf(struct{ database }{})),
 		reflect.VisibleFields(reflect.TypeOf(struct{ searchEngine }{})),
 		reflect.VisibleFields(reflect.TypeOf(struct{ s3Storage }{})),
+		reflect.VisibleFields(reflect.TypeOf(struct{ jobConfig }{})),
 	}
 	v.setFields(structFields)
 	log.Info().Msgf("Setting defaults for viper, completed")

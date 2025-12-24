@@ -13,7 +13,7 @@ var s3JobCmd = &cobra.Command{
 	Long:  "Start the S3 file insert job",
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info().Msg("Starting S3 file insert job...")
-		jobs.InitS3FileInsertJob()
+		jobs.InsertFileJob()
 	},
 }
 

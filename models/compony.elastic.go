@@ -29,6 +29,27 @@ type ElasticCompany struct {
 	CreatedAt time.Time `json:"created_at"` // date search
 }
 
+func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
+	return &ElasticCompany{
+		Id:               company.UUID,
+		Name:             company.Name,
+		EmployeesCount:   company.EmployeesCount,
+		Industries:       company.Industries,
+		Keywords:         company.Keywords,
+		Address:          company.Address,
+		AnnualRevenue:    company.AnnualRevenue,
+		TotalFunding:     company.TotalFunding,
+		Technologies:     company.Technologies,
+		City:             company.City,
+		State:            company.State,
+		Country:          company.Country,
+		LinkedinURL:      company.LinkedinURL,
+		Website:          company.Website,
+		NormalizedDomain: company.NormalizedDomain,
+		CreatedAt:        *company.CreatedAt,
+	}
+}
+
 type ElasticCompanySearchResponse struct {
 	Hits struct {
 		Hits []struct {

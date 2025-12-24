@@ -1,7 +1,8 @@
 package constants
 
 var (
-	InsertFileJob = "insert_file"
+	InsertFileJobType = "insert_file"
+	FileTypeCsv       = "csv"
 
 	OpenJobStatus       = "open"
 	InQueueJobStatus    = "in_queue"

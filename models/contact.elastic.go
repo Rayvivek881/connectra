@@ -45,6 +45,42 @@ type ElasticContact struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+func ElasticContactFromRawData(contact *PgContact, company *PgCompany) *ElasticContact {
+	return &ElasticContact{
+		Id:          contact.UUID,
+		FirstName:   contact.FirstName,
+		LastName:    contact.LastName,
+		CompanyID:   contact.CompanyID,
+		Email:       contact.Email,
+		Title:       contact.Title,
+		Departments: contact.Departments,
+
+		MobilePhone: contact.MobilePhone,
+		EmailStatus: contact.EmailStatus,
+		Seniority:   contact.Seniority,
+		City:        contact.City,
+		State:       contact.State,
+		Country:     contact.Country,
+		LinkedinURL: contact.LinkedinURL,
+
+		CompanyName:             company.Name,
+		CompanyEmployeesCount:   company.EmployeesCount,
+		CompanyIndustries:       company.Industries,
+		CompanyKeywords:         company.Keywords,
+		CompanyAddress:          company.Address,
+		CompanyAnnualRevenue:    company.AnnualRevenue,
+		CompanyTotalFunding:     company.TotalFunding,
+		CompanyTechnologies:     company.Technologies,
+		CompanyCity:             company.City,
+		CompanyState:            company.State,
+		CompanyCountry:          company.Country,
+		CompanyLinkedinURL:      company.LinkedinURL,
+		CompanyWebsite:          company.Website,
+		CompanyNormalizedDomain: company.NormalizedDomain,
+		CreatedAt:               *contact.CreatedAt,
+	}
+}
+
 type ElasticContactSearchResponse struct {
 	Hits struct {
 		Hits []struct {
