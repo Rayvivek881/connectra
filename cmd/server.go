@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"vivek-ray/connections"
 	"vivek-ray/middleware"
 	"vivek-ray/modules/companies"
 	"vivek-ray/modules/contacts"
@@ -47,9 +48,31 @@ func startServer() {
 
 	router.SetTrustedProxies(nil)
 
-	// Health check endpoint
+	// Health check endpoints
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+	router.GET("/health/db", func(c *gin.Context) {
+		// Database health check - verify connection
+		if connections.PgDBConnection.Client != nil {
+			if err := connections.PgDBConnection.Client.Ping(); err == nil {
+				c.JSON(200, gin.H{"status": "ok", "database": "connected"})
+			} else {
+				c.JSON(503, gin.H{"status": "error", "database": "disconnected", "error": err.Error()})
+			}
+		} else {
+			c.JSON(503, gin.H{"status": "error", "database": "not initialized"})
+		}
+	})
+
+	// Favicon endpoint
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(204) // No Content
+	})
+
+	// Admin placeholder endpoint
+	router.GET("/admin/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok", "message": "Admin endpoint placeholder"})
 	})
 
 	companies.Routes(router.Group("/companies"))

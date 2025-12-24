@@ -6,8 +6,6 @@ import (
 	"time"
 	"vivek-ray/connections"
 	"vivek-ray/models"
-
-	"github.com/uptrace/bun"
 )
 
 type CompanyWriteService struct {
@@ -93,7 +91,11 @@ func (s *CompanyWriteService) Update(uuid string, updates map[string]interface{}
 	_, err = tx.NewUpdate().
 		Model((*models.PgCompany)(nil)).
 		Where("uuid = ?", uuid).
-		Set("updated_at = ?", now)
+		Set("updated_at = ?", now).
+		Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set updated_at: %w", err)
+	}
 
 	// Apply all updates
 	for key, value := range updates {

@@ -160,4 +160,3 @@ func BulkUpsertCompanies(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": result, "success": true})
 }
-
