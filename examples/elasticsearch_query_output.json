@@ -1,0 +1,210 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "bool": {
+            "should": [
+              {
+                "match_phrase": {
+                  "job_title": {
+                    "query": "software engineer",
+                    "slop": 3
+                  }
+                }
+              },
+              {
+                "match_phrase": {
+                  "job_title": {
+                    "query": "Python developer",
+                    "slop": 1
+                  }
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        },
+        {
+          "bool": {
+            "should": [
+              {
+                "match": {
+                  "skills": {
+                    "query": "machine learning AI",
+                    "operator": "and",
+                    "fuzziness": "AUTO"
+                  }
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        },
+        {
+          "bool": {
+            "should": [
+              {
+                "match": {
+                  "experience": {
+                    "query": "backend systems",
+                    "operator": "and",
+                    "fuzziness": 0
+                  }
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "job_title": {
+              "query": "intern trainee",
+              "operator": "and",
+              "fuzziness": "AUTO"
+            }
+          }
+        },
+        {
+          "match_phrase": {
+            "employment_type": {
+              "query": "freelance contractor",
+              "slop": 0
+            }
+          }
+        },
+        {
+          "match": {
+            "work_preference": {
+              "query": "remote only",
+              "operator": "and",
+              "fuzziness": 0
+            }
+          }
+        },
+        {
+          "term": {
+            "blacklisted": true
+          }
+        },
+        {
+          "term": {
+            "spam_flag": true
+          }
+        },
+        {
+          "term": {
+            "unsubscribed": true
+          }
+        },
+        {
+          "term": {
+            "bounced_email": true
+          }
+        },
+        {
+          "terms": {
+            "competitor_company": ["CompetitorA", "CompetitorB", "CompetitorC"]
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "created_at": {
+              "gte": "2023-01-01T00:00:00Z",
+              "lte": "2024-12-31T23:59:59Z"
+            }
+          }
+        },
+        {
+          "range": {
+            "last_activity_date": {
+              "gte": "2024-06-01"
+            }
+          }
+        },
+        {
+          "range": {
+            "years_of_experience": {
+              "gte": 3,
+              "lte": 15
+            }
+          }
+        },
+        {
+          "range": {
+            "annual_revenue": {
+              "gte": 1000000,
+              "lte": 50000000
+            }
+          }
+        },
+        {
+          "range": {
+            "employee_count": {
+              "gte": 50
+            }
+          }
+        },
+        {
+          "range": {
+            "email_open_rate": {
+              "gte": 0.25
+            }
+          }
+        },
+        {
+          "range": {
+            "lead_score": {
+              "gte": 70,
+              "lte": 100
+            }
+          }
+        },
+        {
+          "terms": {
+            "country": ["USA", "Canada", "UK", "Germany", "Australia"]
+          }
+        },
+        {
+          "terms": {
+            "department": ["Engineering", "Research", "Data Science"]
+          }
+        },
+        {
+          "term": {
+            "is_verified": true
+          }
+        },
+        {
+          "term": {
+            "account_status": "active"
+          }
+        },
+        {
+          "terms": {
+            "subscription_tier": ["premium", "enterprise"]
+          }
+        },
+        {
+          "terms": {
+            "company_size": ["51-200", "201-500", "501-1000", "1000+"]
+          }
+        }
+      ]
+    }
+  },
+  "search_after": ["85", "2024-11-15T10:30:00Z", "Acme Corp", "2024-01-15T08:00:00Z"],
+  "size": 25,
+  "sort": [
+    { "lead_score": { "order": "desc" } },
+    { "last_activity_date": { "order": "desc" } },
+    { "company_name.keyword": { "order": "asc" } },
+    { "created_at": { "order": "asc" } }
+  ]
+}
+
