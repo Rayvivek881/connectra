@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -11,142 +12,39 @@ import (
 	"vivek-ray/connections"
 	"vivek-ray/constants"
 	"vivek-ray/models"
+	commonService "vivek-ray/modules/common/service"
 	"vivek-ray/utilities"
 
 	"github.com/rs/zerolog/log"
 )
 
 type InsertJobStruct struct {
-	JobsRepository           models.JobsSvcRepo
-	CompanyRepository        models.PgCompanySvcRepo
-	ContactRepository        models.PgContactSvcRepo
-	CompanyElasticRepository models.ElasticCompanySvcRepo
-	ContactElasticRepository models.ElasticContactSvcRepo
+	JobsRepository     models.JobsSvcRepo
+	BatchUpsertService commonService.BatchUpsertSvc
 }
 
 func NewInsertJob() *InsertJobStruct {
 	return &InsertJobStruct{
-		JobsRepository:           models.JobsRepository(connections.PgDBConnection.Client),
-		CompanyRepository:        models.PgCompanyRepository(connections.PgDBConnection.Client),
-		ContactRepository:        models.PgContactRepository(connections.PgDBConnection.Client),
-		CompanyElasticRepository: models.ElasticCompanyRepository(connections.ElasticsearchConnection.Client),
-		ContactElasticRepository: models.ElasticContactRepository(connections.ElasticsearchConnection.Client),
+		JobsRepository:     models.JobsRepository(connections.PgDBConnection.Client),
+		BatchUpsertService: commonService.NewBatchUpsertService(),
 	}
 }
 
-func (i *InsertJobStruct) ProcessBatchInsert(batch []map[string]string) error {
-	PgCompany := make([]*models.PgCompany, 0)
-	PgContact := make([]*models.PgContact, 0)
-	ElasticCompany := make([]*models.ElasticCompany, 0)
-	ElasticContact := make([]*models.ElasticContact, 0)
-
-	for _, row := range batch {
-		company := models.PgCompanyFromRawData(row)
-		contact := models.PgContactFromRowData(row, company)
-		elasticCompany := models.ElasticCompanyFromRawData(company)
-		elasticContact := models.ElasticContactFromRawData(contact, company)
-
-		PgCompany = append(PgCompany, company)
-		PgContact = append(PgContact, contact)
-		ElasticCompany = append(ElasticCompany, elasticCompany)
-		ElasticContact = append(ElasticContact, elasticContact)
-
+func rowToMap(headers, row []string) map[string]string {
+	rowMap := make(map[string]string, len(headers))
+	for idx, header := range headers {
+		if idx < len(row) {
+			rowMap[header] = row[idx]
+		}
 	}
-	var wg sync.WaitGroup
-	wg.Add(4)
-
-	go func() {
-		defer wg.Done()
-		if _, err := i.CompanyRepository.BulkUpsert(PgCompany); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert companies")
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if _, err := i.ContactRepository.BulkUpsert(PgContact); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert contacts")
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if _, err := i.CompanyElasticRepository.BulkUpsert(ElasticCompany); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert companies to elasticsearch")
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if _, err := i.ContactElasticRepository.BulkUpsert(ElasticContact); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert contacts to elasticsearch")
-		}
-	}()
-	wg.Wait()
-	return nil
+	return rowMap
 }
 
 func (i *InsertJobStruct) Run(wg *sync.WaitGroup, jobsChannel chan models.ModelJobs) {
 	defer wg.Done()
 
 	for job := range jobsChannel {
-
-		err := func() error {
-			var Jobdata utilities.InsertFileJobData
-			if err := json.Unmarshal(job.Data, &Jobdata); err != nil {
-				return err
-			}
-
-			job.Status = constants.ProcessingJobStatus
-			if err := i.JobsRepository.BulkUpsert([]*models.ModelJobs{&job}); err != nil {
-				return err
-			}
-
-			batchSize, batch := 500, make([]map[string]string, 0)
-			log.Info().Msgf("Processing job: %s", job.UUID)
-
-			fileStream, err := connections.S3Connection.ReadFileStream(context.Background(), conf.S3StorageConfig.S3Bucket, Jobdata.FileS3Key)
-			if err != nil {
-				return err
-			}
-			defer fileStream.Close()
-			switch Jobdata.FileType {
-			case constants.FileTypeCsv:
-				csvReader := csv.NewReader(fileStream)
-				headers, err := csvReader.Read()
-				if err != nil {
-					return err
-				}
-				for {
-					row, err := csvReader.Read()
-					if err == io.EOF {
-						break
-					}
-
-					if err != nil {
-						return err
-					}
-					rowMap := make(map[string]string)
-					for idx, header := range headers {
-						if idx >= len(row) {
-							continue
-						}
-						rowMap[utilities.GetCleanedString(header)] = utilities.GetCleanedString(row[idx])
-					}
-					batch = append(batch, rowMap)
-					if len(batch) >= batchSize {
-						if err := i.ProcessBatchInsert(batch); err != nil {
-							return err
-						}
-						batch = make([]map[string]string, 0)
-					}
-				}
-				if len(batch) > 0 {
-					if err := i.ProcessBatchInsert(batch); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		}()
+		err := i.processJob(&job)
 
 		if err != nil {
 			job.Status = constants.FailedJobStatus
@@ -161,7 +59,85 @@ func (i *InsertJobStruct) Run(wg *sync.WaitGroup, jobsChannel chan models.ModelJ
 	}
 }
 
-func InsertFileJob() {
+func (i *InsertJobStruct) processJob(job *models.ModelJobs) error {
+	var jobData utilities.InsertFileJobData
+	if err := json.Unmarshal(job.Data, &jobData); err != nil {
+		return err
+	}
+
+	job.Status = constants.ProcessingJobStatus
+	if err := i.JobsRepository.BulkUpsert([]*models.ModelJobs{job}); err != nil {
+		return err
+	}
+
+	log.Info().Msgf("Processing job: %s", job.UUID)
+
+	fileStream, err := connections.S3Connection.ReadFileStream(
+		context.Background(),
+		conf.S3StorageConfig.S3Bucket,
+		jobData.FileS3Key,
+	)
+	if err != nil {
+		return err
+	}
+	defer fileStream.Close()
+
+	switch jobData.FileType {
+	case constants.FileTypeCsv:
+		return i.processCSV(fileStream)
+	}
+
+	return nil
+}
+
+func (i *InsertJobStruct) processCSV(reader io.Reader) error {
+	csvReader := csv.NewReader(reader)
+
+	headers, err := csvReader.Read()
+	if err != nil {
+		return err
+	}
+	batchSize := conf.JobConfig.BatchSize
+	batch := make([]map[string]string, 0, batchSize)
+
+	for {
+		row, err := csvReader.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		batch = append(batch, rowToMap(headers, row))
+		if len(batch) >= batchSize {
+			if err := i.BatchUpsertService.ProcessBatchUpsert(batch); err != nil {
+				return err
+			}
+			batch = batch[:0]
+		}
+	}
+
+	if len(batch) > 0 {
+		return i.BatchUpsertService.ProcessBatchUpsert(batch)
+	}
+
+	return nil
+}
+
+func dqueueJobs(jobsChannel chan models.ModelJobs, jobsRepository *InsertJobStruct) {
+	jobs := make([]*models.ModelJobs, 0)
+	for job := range jobsChannel {
+		job.Status = constants.OpenJobStatus
+		jobs = append(jobs, &job)
+	}
+
+	if err := jobsRepository.JobsRepository.BulkUpsert(jobs); err != nil {
+		log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+	}
+}
+
+func InsertFileJob(ctx context.Context) {
 	insertJob := NewInsertJob()
 	var wg sync.WaitGroup
 	jobsChannel := make(chan models.ModelJobs, 1000)
@@ -180,33 +156,40 @@ func InsertFileJob() {
 	}
 
 	inQueSize := conf.JobConfig.JobInQueuedSize
-	for range ticker.C {
-		if len(jobsChannel) >= inQueSize {
-			continue
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("Context cancelled, stopping job producer...")
+			dqueueJobs(jobsChannel, insertJob)
+			return
+		case <-ticker.C:
+			if len(jobsChannel) >= inQueSize {
+				continue
+			}
+			jobs, err := insertJob.JobsRepository.ListByFilters(models.JobsFilters{
+				JobType: constants.InsertFileJobType,
+				Status:  []string{constants.OpenJobStatus},
+				Limit:   1,
+			})
 
-		jobs, err := insertJob.JobsRepository.ListByFilters(models.JobsFilters{
-			JobType: constants.InsertFileJobType,
-			Status:  []string{constants.OpenJobStatus},
-			Limit:   inQueSize - len(jobsChannel),
-		})
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to list jobs")
-			continue
-		}
-		if len(jobs) == 0 {
-			log.Info().Msg("No jobs found to insert file")
-			continue
-		}
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to list jobs")
+				continue
+			}
+			if len(jobs) == 0 {
+				log.Info().Msg("No jobs found to insert file")
+				continue
+			}
 
-		for _, job := range jobs {
-			job.Status = constants.InQueueJobStatus
-			jobsChannel <- *job
-			log.Info().Msgf("Job pushed to channel: %s", job.UUID)
-		}
+			for _, job := range jobs {
+				job.Status = constants.InQueueJobStatus
+				jobsChannel <- *job
+				log.Info().Msgf("Job pushed to channel: %s", job.UUID)
+			}
 
-		if err = insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+			if err = insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
+				log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+			}
 		}
 	}
 }

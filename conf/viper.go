@@ -19,6 +19,7 @@ type jobConfig struct {
 	JobInQueuedSize int `mapstructure:"JOB_IN_QUEUE_SIZE"`
 	ParallelJobs    int `mapstructure:"PARALLEL_JOBS"`
 	TickerInterval  int `mapstructure:"TICKER_INTERVAL_MINUTES"`
+	BatchSize       int `mapstructure:"BATCH_SIZE_FOR_INSERTION"`
 }
 
 type database struct {

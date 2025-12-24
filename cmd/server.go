@@ -1,7 +1,13 @@
 package cmd
 
 import (
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"vivek-ray/middleware"
+	"vivek-ray/modules/common"
 	"vivek-ray/modules/companies"
 	"vivek-ray/modules/contacts"
 
@@ -52,12 +58,27 @@ func startServer() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	common.Routes(router.Group("/common"))
 	companies.Routes(router.Group("/companies"))
 	contacts.Routes(router.Group("/contacts"))
 
-	log.Info().Msg("Starting server on :8000")
-	if err := router.Run(":8000"); err != nil {
-		log.Error().Err(err).Msgf("Error starting server: %v", err.Error())
-		return
+	srv := &http.Server{Addr: ":8000", Handler: router}
+
+	go func() {
+		log.Info().Msg("Starting server on :8000")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("Error starting server")
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info().Msg("Shutting down server...")
+	if err := srv.Shutdown(context.TODO()); err != nil {
+		log.Error().Err(err).Msg("Server forced to shutdown")
 	}
+
+	log.Info().Msg("Server exited")
 }
