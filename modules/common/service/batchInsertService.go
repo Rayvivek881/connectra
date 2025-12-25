@@ -5,8 +5,6 @@ import (
 	"vivek-ray/connections"
 	"vivek-ray/models"
 	"vivek-ray/utilities"
-
-	"github.com/rs/zerolog/log"
 )
 
 type BatchUpsertSvc interface {
@@ -44,49 +42,67 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error
 	esCompanies := make([]*models.ElasticCompany, 0, len(cleanedBatch))
 	esContacts := make([]*models.ElasticContact, 0, len(cleanedBatch))
 
+	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
 	for _, row := range cleanedBatch {
 		company := models.PgCompanyFromRawData(row)
 		contact := models.PgContactFromRowData(row, company)
 		elasticCompany := models.ElasticCompanyFromRawData(company)
 		elasticContact := models.ElasticContactFromRawData(contact, company)
 
-		pgCompanies = append(pgCompanies, company)
-		pgContacts = append(pgContacts, contact)
-		esCompanies = append(esCompanies, elasticCompany)
-		esContacts = append(esContacts, elasticContact)
+		if _, ok := insertedCompanies[company.UUID]; !ok {
+			insertedCompanies[company.UUID] = struct{}{}
+			pgCompanies = append(pgCompanies, company)
+			esCompanies = append(esCompanies, elasticCompany)
+		}
+
+		if _, ok := insertedContacts[contact.UUID]; !ok {
+			insertedContacts[contact.UUID] = struct{}{}
+			pgContacts = append(pgContacts, contact)
+			esContacts = append(esContacts, elasticContact)
+		}
 	}
 
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var insertionError error
 	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
 		if _, err := s.companyRepo.BulkUpsert(pgCompanies); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert companies")
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		if _, err := s.contactRepo.BulkUpsert(pgContacts); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert contacts")
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		if _, err := s.companyElasticRepo.BulkUpsert(esCompanies); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert companies to elasticsearch")
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		if _, err := s.contactElasticRepo.BulkUpsert(esContacts); err != nil {
-			log.Error().Err(err).Msg("Failed to bulk upsert contacts to elasticsearch")
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
 		}
 	}()
 
 	wg.Wait()
-	return nil
+	return insertionError
 }

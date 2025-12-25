@@ -40,7 +40,7 @@ func rowToMap(headers, row []string) map[string]string {
 	return rowMap
 }
 
-func (i *InsertJobStruct) Run(wg *sync.WaitGroup, jobsChannel chan models.ModelJobs) {
+func (i *InsertJobStruct) Run(wg *sync.WaitGroup, retry int, jobsChannel chan models.ModelJobs) {
 	defer wg.Done()
 
 	for job := range jobsChannel {
@@ -49,6 +49,7 @@ func (i *InsertJobStruct) Run(wg *sync.WaitGroup, jobsChannel chan models.ModelJ
 		if err != nil {
 			job.Status = constants.FailedJobStatus
 			job.RuntimeErrors = append(job.RuntimeErrors, err.Error())
+			job.RetryCount = job.RetryCount - retry
 		} else {
 			job.Status = constants.CompletedJobStatus
 		}
@@ -64,17 +65,16 @@ func (i *InsertJobStruct) processJob(job *models.ModelJobs) error {
 	if err := json.Unmarshal(job.Data, &jobData); err != nil {
 		return err
 	}
-
 	job.Status = constants.ProcessingJobStatus
 	if err := i.JobsRepository.BulkUpsert([]*models.ModelJobs{job}); err != nil {
 		return err
 	}
-
-	log.Info().Msgf("Processing job: %s", job.UUID)
-
+	if jobData.FileS3Bucket == "" { // take default bucket from config if not provided
+		jobData.FileS3Bucket = conf.S3StorageConfig.S3Bucket
+	}
 	fileStream, err := connections.S3Connection.ReadFileStream(
 		context.Background(),
-		conf.S3StorageConfig.S3Bucket,
+		jobData.FileS3Bucket,
 		jobData.FileS3Key,
 	)
 	if err != nil {
@@ -97,12 +97,14 @@ func (i *InsertJobStruct) processCSV(reader io.Reader) error {
 	if err != nil {
 		return err
 	}
+	log.Info().Msgf("Headers: %v", headers)
 	batchSize := conf.JobConfig.BatchSize
 	batch := make([]map[string]string, 0, batchSize)
 
 	for {
 		row, err := csvReader.Read()
 		if errors.Is(err, io.EOF) {
+			log.Info().Msg("EOF")
 			break
 		}
 		if err != nil {
@@ -121,19 +123,22 @@ func (i *InsertJobStruct) processCSV(reader io.Reader) error {
 	if len(batch) > 0 {
 		return i.BatchUpsertService.ProcessBatchUpsert(batch)
 	}
-
 	return nil
 }
 
-func dqueueJobs(jobsChannel chan models.ModelJobs, jobsRepository *InsertJobStruct) {
-	jobs := make([]*models.ModelJobs, 0)
+func dequeueJobs(jobsChannel chan models.ModelJobs, status string, insertJob *InsertJobStruct) {
+	jobs := make([]*models.ModelJobs, 0, len(jobsChannel))
+
 	for job := range jobsChannel {
-		job.Status = constants.OpenJobStatus
+		job.Status = status
 		jobs = append(jobs, &job)
 	}
 
-	if err := jobsRepository.JobsRepository.BulkUpsert(jobs); err != nil {
-		log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+	if len(jobs) > 0 {
+		if err := insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
+			log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+		}
+		log.Info().Msgf("Dequeued %d jobs with status: %s", len(jobs), status)
 	}
 }
 
@@ -142,17 +147,16 @@ func InsertFileJob(ctx context.Context) {
 	var wg sync.WaitGroup
 	jobsChannel := make(chan models.ModelJobs, 1000)
 
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Second)
 	defer func() {
 		ticker.Stop()
-		close(jobsChannel)
 		wg.Wait()
 		log.Info().Msg("All workers stopped")
 	}()
 
 	for i := 0; i < conf.JobConfig.ParallelJobs; i++ {
 		wg.Add(1)
-		go insertJob.Run(&wg, jobsChannel)
+		go insertJob.Run(&wg, 0, jobsChannel)
 	}
 
 	inQueSize := conf.JobConfig.JobInQueuedSize
@@ -160,7 +164,8 @@ func InsertFileJob(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			log.Info().Msg("Context cancelled, stopping job producer...")
-			dqueueJobs(jobsChannel, insertJob)
+			close(jobsChannel)
+			dequeueJobs(jobsChannel, constants.OpenJobStatus, insertJob)
 			return
 		case <-ticker.C:
 			if len(jobsChannel) >= inQueSize {
@@ -182,13 +187,73 @@ func InsertFileJob(ctx context.Context) {
 			}
 
 			for _, job := range jobs {
+				log.Info().Msgf("pushing job to in queue: %s", job.UUID)
 				job.Status = constants.InQueueJobStatus
+			}
+			if err = insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
+				log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+				continue
+			}
+
+			for _, job := range jobs {
 				jobsChannel <- *job
 				log.Info().Msgf("Job pushed to channel: %s", job.UUID)
 			}
 
+		}
+	}
+}
+
+func RetryInsertFileJob(ctx context.Context) {
+	insertJob := NewInsertJob()
+	var wg sync.WaitGroup
+	jobsChannel := make(chan models.ModelJobs, 1000)
+
+	wg.Add(1)
+	go insertJob.Run(&wg, 1, jobsChannel)
+
+	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
+	defer func() {
+		ticker.Stop()
+		wg.Wait()
+		log.Info().Msg("All workers stopped")
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("Context cancelled, stopping retry job producer...")
+			close(jobsChannel)
+			dequeueJobs(jobsChannel, constants.FailedJobStatus, insertJob)
+			return
+		case <-ticker.C:
+			jobs, err := insertJob.JobsRepository.ListByFilters(models.JobsFilters{
+				JobType:  constants.InsertFileJobType,
+				Retrying: true,
+				Status:   []string{constants.FailedJobStatus},
+				Limit:    1,
+			})
+
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to list jobs")
+				continue
+			}
+			if len(jobs) == 0 {
+				log.Info().Msg("No jobs found to insert file")
+				continue
+			}
+
+			for _, job := range jobs {
+				job.Status = constants.RetryInQueuedJobStatus
+			}
 			if err = insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
 				log.Error().Err(err).Msg("Failed to bulk upsert jobs")
+				continue
+			}
+
+			for _, job := range jobs {
+				jobsChannel <- *job
+				log.Info().Msgf("Job pushed to channel: %s", job.UUID)
 			}
 		}
 	}

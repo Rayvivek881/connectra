@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var spaceRegex = regexp.MustCompile(`\s+`) // regex to match one or more spaces
+
 func GetFieldValue(v interface{}, fieldName string) string {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() == reflect.Ptr {
@@ -94,7 +96,6 @@ func GetCleanedString(strValue string) string {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
 
-	spaceRegex := regexp.MustCompile(`\s+`)
 	return spaceRegex.ReplaceAllString(strValue, " ")
 }
 

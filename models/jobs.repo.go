@@ -20,9 +20,10 @@ func JobsRepository(db *bun.DB) JobsSvcRepo {
 }
 
 type JobsFilters struct {
-	JobType string
-	Status  []string
-	Limit   int
+	JobType  string
+	Status   []string
+	Limit    int
+	Retrying bool `default:"false"`
 }
 
 func (f *JobsFilters) ToWhereQuery(query *bun.SelectQuery) *bun.SelectQuery {
@@ -31,6 +32,9 @@ func (f *JobsFilters) ToWhereQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	}
 	if len(f.Status) > 0 {
 		query.Where("status IN (?)", bun.In(f.Status))
+	}
+	if f.Retrying {
+		query.Where("retry_count > 0")
 	}
 
 	limit := utilities.InlineIf(f.Limit > 0, f.Limit, constants.DefaultPageSize).(int)
@@ -53,8 +57,23 @@ func (t *JobsStruct) Create(job *ModelJobs) (string, error) {
 }
 
 func (t *JobsStruct) BulkUpsert(jobs []*ModelJobs) error {
+	// Deduplicate by UUID - keep the last occurrence
+	uniqueJobs := make(map[string]*ModelJobs)
+	for _, job := range jobs {
+		uniqueJobs[job.UUID] = job
+	}
+
+	deduped := make([]*ModelJobs, 0, len(uniqueJobs))
+	for _, job := range uniqueJobs {
+		deduped = append(deduped, job)
+	}
+
+	if len(deduped) == 0 {
+		return nil
+	}
+
 	_, err := t.PgDbClient.NewInsert().
-		Model(&jobs).
+		Model(&deduped).
 		On("CONFLICT(uuid) DO UPDATE").
 		Set("status = EXCLUDED.status").
 		Set("runtime_errors = EXCLUDED.runtime_errors").

@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"vivek-ray/conf"
+	"vivek-ray/constants"
 	"vivek-ray/jobs"
 
 	"github.com/rs/zerolog/log"
@@ -20,12 +22,22 @@ var s3JobCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			log.Info().Msg("Starting S3 file insert job...")
-			jobs.InsertFileJob(ctx)
-		}()
+		if conf.JobConfig.JobType == constants.NormalJobType {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				log.Info().Msg("Starting S3 file insert job...")
+				jobs.InsertFileJob(ctx)
+			}()
+		}
+		if conf.JobConfig.JobType == constants.RetryJobType {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				log.Info().Msg("Starting S3 file retry insert job...")
+				jobs.RetryInsertFileJob(ctx)
+			}()
+		}
 
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

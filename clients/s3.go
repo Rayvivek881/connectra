@@ -147,6 +147,24 @@ func (c *S3Connection) GetPresignedURL(ctx context.Context, bucket, key string, 
 	return presignedURL.URL, nil
 }
 
+func (c *S3Connection) GetUploadPresignedURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error) {
+	presignClient := s3.NewPresignClient(c.Client)
+
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	presignedURL, err := presignClient.PresignPutObject(ctx, input, s3.WithPresignExpires(expiry))
+	if err != nil {
+		log.Error().Err(err).Msgf("Error generating upload presigned URL for: %s", key)
+		return "", err
+	}
+
+	log.Debug().Msgf("Successfully generated upload presigned URL for: %s", key)
+	return presignedURL.URL, nil
+}
+
 func (c *S3Connection) ReadFileStream(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),

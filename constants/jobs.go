@@ -12,4 +12,7 @@ var (
 
 	RetryInQueuedJobStatus = "retry_in_queued"
 	RetryingJobStatus      = "retrying"
+
+	NormalJobType = "normal"
+	RetryJobType  = "retry"
 )

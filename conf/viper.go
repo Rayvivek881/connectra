@@ -16,10 +16,11 @@ type app struct {
 }
 
 type jobConfig struct {
-	JobInQueuedSize int `mapstructure:"JOB_IN_QUEUE_SIZE"`
-	ParallelJobs    int `mapstructure:"PARALLEL_JOBS"`
-	TickerInterval  int `mapstructure:"TICKER_INTERVAL_MINUTES"`
-	BatchSize       int `mapstructure:"BATCH_SIZE_FOR_INSERTION"`
+	JobInQueuedSize int    `mapstructure:"JOB_IN_QUEUE_SIZE"`
+	ParallelJobs    int    `mapstructure:"PARALLEL_JOBS"`
+	TickerInterval  int    `mapstructure:"TICKER_INTERVAL_MINUTES"`
+	BatchSize       int    `mapstructure:"BATCH_SIZE_FOR_INSERTION"`
+	JobType         string `mapstructure:"JOB_TYPE"`
 }
 
 type database struct {
@@ -45,13 +46,15 @@ type searchEngine struct {
 }
 
 type s3Storage struct {
-	S3AccessKey string `mapstructure:"S3_ACCESS_KEY"`
-	S3SecretKey string `mapstructure:"S3_SECRET_KEY"`
-	S3Region    string `mapstructure:"S3_REGION"`
-	S3Bucket    string `mapstructure:"S3_BUCKET"`
-	S3Endpoint  string `mapstructure:"S3_ENDPOINT"`
-	S3SSL       bool   `mapstructure:"S3_SSL"`
-	S3Debug     bool   `mapstructure:"S3_DEBUG"`
+	S3AccessKey      string `mapstructure:"S3_ACCESS_KEY"`
+	S3SecretKey      string `mapstructure:"S3_SECRET_KEY"`
+	S3Region         string `mapstructure:"S3_REGION"`
+	S3Bucket         string `mapstructure:"S3_BUCKET"`
+	S3Endpoint       string `mapstructure:"S3_ENDPOINT"`
+	S3SSL            bool   `mapstructure:"S3_SSL"`
+	S3Debug          bool   `mapstructure:"S3_DEBUG"`
+	S3UploadURLTTL   int    `mapstructure:"S3_UPLOAD_URL_TTL_HOURS"`
+	S3UploadFilePath string `mapstructure:"S3_UPLOAD_FILE_PATH_PRIFIX"`
 }
 
 var AppConfig = &app{}

@@ -47,8 +47,8 @@ func (c *ElasticsearchConnection) Open() {
 	cfg := elasticsearch.Config{
 		Addresses: addresses,
 		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 100,
+			MaxIdleConns:        20,
+			MaxIdleConnsPerHost: 5,
 			IdleConnTimeout:     30 * time.Minute,
 			DisableCompression:  false,
 			DialContext: (&net.Dialer{
