@@ -83,7 +83,7 @@ func BindAndValidateListJobs(c *gin.Context) (ListJobsRequest, error) {
 	if request.Limit < 0 {
 		return request, errors.New("limit cannot be negative")
 	}
-	if request.Limit > 100 {
+	if request.Limit > constants.MaxPageSize {
 		return request, errors.New("limit cannot exceed 100")
 	}
 

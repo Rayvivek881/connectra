@@ -37,10 +37,9 @@ func (s *jobService) CreateJob(request helper.CreateJobRequest) error {
 }
 
 func (s *jobService) ListJobs(request helper.ListJobsRequest) ([]*models.ModelJobs, error) {
-	filters := models.JobsFilters{
+	return s.jobsRepository.ListByFilters(models.JobsFilters{
 		JobType: request.JobType,
 		Status:  request.Status,
 		Limit:   request.Limit,
-	}
-	return s.jobsRepository.ListByFilters(filters)
+	})
 }

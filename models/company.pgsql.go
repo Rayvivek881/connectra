@@ -45,28 +45,30 @@ type PgCompany struct {
 }
 
 func PgCompanyFromRawData(row map[string]string) *PgCompany {
-	companyName, email := row["company"], row["email"]
-	normalizedDomain, linkedinURL := strings.Split(email, "@")[1], row["company_linkedin_url"]
-	server_time := time.Now()
+	companyName, email := row["company"], strings.ToLower(row["email"])
+	server_time, linkedinURL := time.Now(), strings.ToLower(row["company_linkedin_url"])
+	var normalizedDomain string
+	if _, domain, found := strings.Cut(email, "@"); found {
+		normalizedDomain = domain
+	}
 
-	CompanyUUID := utilities.GenerateUUID5(fmt.Sprintf("%s%s", companyName, linkedinURL))
+	CompanyUUID := utilities.GenerateUUID5(fmt.Sprintf("%s%s", strings.ToLower(companyName), linkedinURL))
 	return &PgCompany{
 		UUID: CompanyUUID,
 
-		Name:           companyName,
-		EmployeesCount: utilities.StringToInt64(row["employees"]),
-		Industries:     utilities.SplitAndTrim(row["industry"], ","),
-		Keywords:       utilities.SplitAndTrim(row["keywords"], ","),
-		Address:        row["company_address"],
-		AnnualRevenue:  utilities.StringToInt64(row["annual_revenue"]),
-		TotalFunding:   utilities.StringToInt64(row["total_funding"]),
-		Technologies:   utilities.SplitAndTrim(row["technologies"], ","),
-		Website:        row["website"],
-		LinkedinURL:    linkedinURL,
-		City:           strings.ToLower(row["company_city"]),
-		State:          strings.ToLower(row["company_state"]),
-		Country:        strings.ToLower(row["company_country"]),
-
+		Name:             companyName,
+		EmployeesCount:   utilities.StringToInt64(row["employees"]),
+		Industries:       utilities.SplitAndTrim(row["industry"], ","),
+		Keywords:         utilities.SplitAndTrim(row["keywords"], ","),
+		Address:          row["company_address"],
+		AnnualRevenue:    utilities.StringToInt64(row["annual_revenue"]),
+		TotalFunding:     utilities.StringToInt64(row["total_funding"]),
+		Technologies:     utilities.SplitAndTrim(row["technologies"], ","),
+		Website:          row["website"],
+		LinkedinURL:      linkedinURL,
+		City:             strings.ToLower(row["company_city"]),
+		State:            strings.ToLower(row["company_state"]),
+		Country:          strings.ToLower(row["company_country"]),
 		NormalizedDomain: normalizedDomain,
 
 		FacebookURL:          row["facebook_url"],
