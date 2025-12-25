@@ -27,40 +27,8 @@ func NewBatchUpsertService() BatchUpsertSvc {
 	}
 }
 
-func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error {
-	cleanedBatch := make([]map[string]string, 0, len(batch))
-	for _, row := range batch {
-		cleanedRow := make(map[string]string)
-		for key, value := range row {
-			cleanedRow[utilities.GetCleanedString(key)] = utilities.GetCleanedString(value)
-		}
-		cleanedBatch = append(cleanedBatch, cleanedRow)
-	}
-
-	pgCompanies := make([]*models.PgCompany, 0, len(batch))
-	pgContacts := make([]*models.PgContact, 0, len(cleanedBatch))
-	esCompanies := make([]*models.ElasticCompany, 0, len(cleanedBatch))
-	esContacts := make([]*models.ElasticContact, 0, len(cleanedBatch))
-
-	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
-	for _, row := range cleanedBatch {
-		company := models.PgCompanyFromRawData(row)
-		contact := models.PgContactFromRowData(row, company)
-		elasticCompany := models.ElasticCompanyFromRawData(company)
-		elasticContact := models.ElasticContactFromRawData(contact, company)
-
-		if _, ok := insertedCompanies[company.UUID]; !ok {
-			insertedCompanies[company.UUID] = struct{}{}
-			pgCompanies = append(pgCompanies, company)
-			esCompanies = append(esCompanies, elasticCompany)
-		}
-
-		if _, ok := insertedContacts[contact.UUID]; !ok {
-			insertedContacts[contact.UUID] = struct{}{}
-			pgContacts = append(pgContacts, contact)
-			esContacts = append(esContacts, elasticContact)
-		}
-	}
+func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgContacts []*models.PgContact,
+	esCompanies []*models.ElasticCompany, esContacts []*models.ElasticContact) error {
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -105,4 +73,41 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error
 
 	wg.Wait()
 	return insertionError
+}
+
+func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error {
+	cleanedBatch := make([]map[string]string, 0, len(batch))
+	for _, row := range batch {
+		cleanedRow := make(map[string]string)
+		for key, value := range row {
+			cleanedRow[utilities.GetCleanedString(key)] = utilities.GetCleanedString(value)
+		}
+		cleanedBatch = append(cleanedBatch, cleanedRow)
+	}
+
+	pgCompanies := make([]*models.PgCompany, 0, len(batch))
+	pgContacts := make([]*models.PgContact, 0, len(cleanedBatch))
+	esCompanies := make([]*models.ElasticCompany, 0, len(cleanedBatch))
+	esContacts := make([]*models.ElasticContact, 0, len(cleanedBatch))
+
+	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
+	for _, row := range cleanedBatch {
+		company := models.PgCompanyFromRawData(row)
+		contact := models.PgContactFromRowData(row, company)
+		elasticCompany := models.ElasticCompanyFromRawData(company)
+		elasticContact := models.ElasticContactFromRawData(contact, company)
+
+		if _, ok := insertedCompanies[company.UUID]; !ok {
+			insertedCompanies[company.UUID] = struct{}{}
+			pgCompanies = append(pgCompanies, company)
+			esCompanies = append(esCompanies, elasticCompany)
+		}
+
+		if _, ok := insertedContacts[contact.UUID]; !ok {
+			insertedContacts[contact.UUID] = struct{}{}
+			pgContacts = append(pgContacts, contact)
+			esContacts = append(esContacts, elasticContact)
+		}
+	}
+	return s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
 }

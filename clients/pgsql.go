@@ -52,8 +52,8 @@ func (c *PgsqlConnection) Open() {
 	if c.config.Debug {
 		c.Client.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(c.config.Debug)))
 	}
-	sqldb.SetMaxOpenConns(100)
-	sqldb.SetMaxIdleConns(50)
+	sqldb.SetMaxOpenConns(40)
+	sqldb.SetMaxIdleConns(20)
 
 	sqldb.SetConnMaxLifetime(30 * time.Minute)
 	sqldb.SetConnMaxIdleTime(30 * time.Minute)
