@@ -14,6 +14,8 @@ func main() {
 	defer connections.CloseDB()
 
 	connections.InitSearchEngine()
+	defer connections.CloseSearchEngine()
+
 	connections.InitS3()
 
 	cmd.Execute()

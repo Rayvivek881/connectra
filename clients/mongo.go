@@ -39,7 +39,8 @@ func NewMongoConnection(config *MongoConfig) *MongoConnection {
 func (c *MongoConnection) Open() {
 	var url = fmt.Sprintf("mongodb://%s:%s", c.Config.Host, c.Config.Port)
 	var clientOpts = options.Client().ApplyURI(url)
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
 
 	if c.Config.Auth {
 		clientOpts = clientOpts.SetAuth(options.Credential{

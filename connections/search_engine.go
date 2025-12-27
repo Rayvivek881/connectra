@@ -19,3 +19,7 @@ func InitSearchEngine() {
 	})
 	ElasticsearchConnection.Open()
 }
+
+func CloseSearchEngine() {
+	ElasticsearchConnection.Close()
+}

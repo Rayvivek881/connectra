@@ -26,8 +26,9 @@ type ElasticsearchConfig struct {
 }
 
 type ElasticsearchConnection struct {
-	Config *ElasticsearchConfig
-	Client *elasticsearch.Client
+	Config    *ElasticsearchConfig
+	Client    *elasticsearch.Client
+	transport *http.Transport
 }
 
 func NewElasticsearchConnection(config *ElasticsearchConfig) *ElasticsearchConnection {
@@ -44,19 +45,20 @@ func (c *ElasticsearchConnection) Open() {
 		addresses = []string{fmt.Sprintf("http://%s:%s", c.Config.Host, c.Config.Port)}
 	}
 
-	cfg := elasticsearch.Config{
-		Addresses: addresses,
-		Transport: &http.Transport{
-			MaxIdleConns:        20,
-			MaxIdleConnsPerHost: 5,
-			IdleConnTimeout:     30 * time.Minute,
-			DisableCompression:  false,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-		},
+	c.transport = &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 5,
+		IdleConnTimeout:     30 * time.Minute,
+		DisableCompression:  false,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+	}
 
+	cfg := elasticsearch.Config{
+		Addresses:           addresses,
+		Transport:           c.transport,
 		CompressRequestBody: !c.Config.Debug,
 	}
 
@@ -103,4 +105,12 @@ func (c *ElasticsearchConnection) Open() {
 
 	c.Client = client
 	log.Info().Msgf("Elasticsearch Connected Successfully")
+}
+
+func (c *ElasticsearchConnection) Close() {
+	if c.transport != nil {
+		c.transport.CloseIdleConnections()
+	}
+	c.Client = nil
+	log.Info().Msg("Elasticsearch connection closed")
 }

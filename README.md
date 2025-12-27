@@ -4,7 +4,6 @@
   <img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/AWS_S3-232F3E?style=for-the-badge&logo=amazons3&logoColor=white" alt="AWS S3"/>
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
-  <img src="https://img.shields.io/badge/MongoDB-Ready-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
 </p>
 
 <h1 align="center">🚀 Connectra</h1>
@@ -27,7 +26,6 @@
 
 ## 📋 Table of Contents
 
-- [Why This Project Demonstrates SDE2 Competency](#-why-this-project-demonstrates-sde2-competency)
 - [Architectural Philosophy](#-architectural-philosophy)
 - [Core Engineering Achievements](#-core-engineering-achievements)
 - [Advanced Concurrency Implementation](#-advanced-concurrency-implementation)
@@ -43,31 +41,6 @@
 - [API Reference](#-api-reference)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
-
----
-
-## 🎯 Why This Project Demonstrates SDE2 Competency
-
-This project showcases engineering skills expected at the **SDE2/Senior Backend Engineer level** for both MNCs and startups:
-
-### For MNCs (Amazon, Google, Microsoft, Meta)
-| Leadership Principle / Competency | Demonstrated Through |
-|----------------------------------|---------------------|
-| **System Design** | Hybrid database architecture, CQRS pattern, distributed job processing |
-| **Scalability** | Connection pooling, worker pools, batched writes, streaming processing |
-| **Trade-off Analysis** | Elasticsearch vs PostgreSQL decisions, eventual vs strong consistency |
-| **Operational Excellence** | Graceful shutdown, structured logging, health checks, Docker support |
-| **Code Quality** | Clean architecture, interface segregation, dependency injection |
-| **Concurrency Mastery** | Goroutines, channels, mutexes, WaitGroups, context cancellation |
-
-### For Startups
-| Startup Need | How This Project Addresses It |
-|-------------|------------------------------|
-| **Ship Fast, Scale Later** | Modular architecture allows independent scaling of components |
-| **Wear Multiple Hats** | Full-stack backend: API, background jobs, storage, search, security |
-| **Production-Ready Code** | Rate limiting, auth, error handling, Docker deployment ready |
-| **Handle Growth** | Designed for millions of records with sub-second search latency |
-| **Cost Efficiency** | Efficient connection pooling, batch processing, streaming (not buffering) |
 
 ---
 
@@ -1273,7 +1246,7 @@ connectra/
 ├── cmd/                              # CLI commands (Cobra)
 │   ├── root.go                       # Root command with graceful shutdown
 │   ├── server.go                     # API server command
-│   └── s3_file_insertions.go.go      # Background job runner
+│   └── s3_file_insertions.go         # Background job runner
 │
 ├── conf/                             # Configuration management
 │   └── viper.go                      # Viper-based env config with reflection
@@ -1300,8 +1273,8 @@ connectra/
 │   ├── contact.elastic.repo.go       # Elasticsearch contact repository
 │   ├── company.pgsql.go              # PostgreSQL company model
 │   ├── company.pgsql.repo.go         # Company repository
-│   ├── compony.elastic.go            # Elasticsearch company model
-│   ├── compony.elastic.repo.go       # Elasticsearch company repository
+│   ├── company.elastic.go            # Elasticsearch company model
+│   ├── company.elastic.repo.go       # Elasticsearch company repository
 │   ├── jobs.go                       # Job model with state machine
 │   ├── jobs.repo.go                  # Job repository with deduplication
 │   ├── filters.go                    # Filter configuration model
@@ -1416,7 +1389,7 @@ S3_REGION=us-east-1
 S3_BUCKET=connectra-uploads
 S3_ENDPOINT=s3.amazonaws.com
 S3_SSL=true
-S3_UPLOAD_FILE_PATH_PRIFIX=uploads
+S3_UPLOAD_FILE_PATH_PREFIX=uploads
 
 # Jobs Configuration
 PARALLEL_JOBS=4
