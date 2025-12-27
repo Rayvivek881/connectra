@@ -28,6 +28,7 @@ func FiltersDataRepository(db *bun.DB) FiltersDataSvcRepo {
 
 type FiltersDataSvcRepo interface {
 	GetFiltersByQuery(query FiltersDataQuery) ([]*ModelFilterData, error)
+	BulkUpsert(filtersData []*ModelFilterData) error
 }
 
 func (t *FiltersDataStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*ModelFilterData, error) {
@@ -43,4 +44,12 @@ func (t *FiltersDataStruct) GetFiltersByQuery(query FiltersDataQuery) ([]*ModelF
 	}
 	err := queryBuilder.Limit(query.Limit).Scan(context.Background())
 	return filtersData, err
+}
+
+func (t *FiltersDataStruct) BulkUpsert(filtersData []*ModelFilterData) error {
+	_, err := t.PgDbClient.NewInsert().
+		Model(&filtersData).
+		On("CONFLICT(uuid) DO NOTHING").
+		Exec(context.Background())
+	return err
 }

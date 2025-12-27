@@ -9,4 +9,5 @@ import (
 func Routes(router *gin.RouterGroup) {
 	router.POST("/", controller.GetContactsByFilter)
 	router.POST("/count", controller.GetContactsCountByFilter)
+	router.POST("/batch-upsert", controller.BatchUpsert)
 }

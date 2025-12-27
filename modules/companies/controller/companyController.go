@@ -2,6 +2,8 @@ package controller
 
 import (
 	"net/http"
+	"vivek-ray/connections"
+	"vivek-ray/models"
 	"vivek-ray/modules/companies/helper"
 	"vivek-ray/modules/companies/service"
 
@@ -14,7 +16,8 @@ func GetCompaniesByFilter(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-	result, err := service.NewCompanyService().ListByFilters(query)
+	tempFilters := make([]*models.ModelFilter, 0)
+	result, err := service.NewCompanyService(tempFilters).ListByFilters(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
@@ -28,10 +31,26 @@ func GetCompaniesCountByFilter(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-	count, err := service.NewCompanyService().CountByFilters(query)
+	tempFilters := make([]*models.ModelFilter, 0)
+	count, err := service.NewCompanyService(tempFilters).CountByFilters(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"count": count, "success": true})
+}
+
+func BatchUpsert(c *gin.Context) {
+	pgCompanies, esCompanies, err := helper.BindBatchUpsertRequest(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
+		return
+	}
+	tempFilters, err := models.FiltersRepository(connections.PgDBConnection.Client).GetTempFilters()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
+		return
+	}
+	service.NewCompanyService(tempFilters).BulkUpsert(pgCompanies, esCompanies)
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }

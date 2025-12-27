@@ -16,14 +16,14 @@ import (
 
 var spaceRegex = regexp.MustCompile(`\s+`) // regex to match one or more spaces
 
-func GetFieldValue(v interface{}, fieldName string) string {
+func GetFieldValue(v interface{}, fieldName string) any {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
 
 	if rv.Kind() != reflect.Struct {
-		return ""
+		return nil
 	}
 
 	rt := rv.Type()
@@ -33,16 +33,43 @@ func GetFieldValue(v interface{}, fieldName string) string {
 		if jsonTag != "" {
 			jsonTag = strings.Split(jsonTag, ",")[0]
 			if jsonTag == fieldName {
-				fieldValue := rv.Field(i)
-				return fmt.Sprintf("%v", fieldValue.Interface())
+				return rv.Field(i).Interface()
 			}
 		}
 		if strings.EqualFold(field.Name, fieldName) {
-			fieldValue := rv.Field(i)
-			return fmt.Sprintf("%v", fieldValue.Interface())
+			return rv.Field(i).Interface()
 		}
 	}
-	return ""
+	return nil
+}
+
+func ToStringSlice(v interface{}) []string {
+	if v == nil {
+		return nil
+	}
+	rv := reflect.ValueOf(v)
+
+	if rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+
+	if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+		result := make([]string, 0, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i).Interface()
+			if s, ok := elem.(string); ok {
+				result = append(result, s)
+			} else {
+				result = append(result, fmt.Sprintf("%v", elem))
+			}
+		}
+		return result
+	}
+
+	return []string{fmt.Sprintf("%v", v)}
 }
 
 func AddToBuffer(buf *bytes.Buffer, data any) error {
@@ -125,28 +152,6 @@ func StringToInt64(value string) int64 {
 	return result
 }
 
-func StringToFloat64(value string) float64 {
-	if value == "" {
-		return 0
-	}
-	normalized := strings.Map(func(r rune) rune {
-		if unicode.IsDigit(r) || r == '.' {
-			return r
-		}
-		return -1
-	}, value)
-
-	if normalized == "" {
-		return 0
-	}
-
-	result, err := strconv.ParseFloat(normalized, 64)
-	if err != nil {
-		return 0
-	}
-	return result
-}
-
 func SplitAndTrim(value, sep string) []string {
 	if value == "" {
 		return []string{}
@@ -160,4 +165,21 @@ func SplitAndTrim(value, sep string) []string {
 		}
 	}
 	return result
+}
+
+func GetCleanedPhoneNumber(phoneNumber string) string {
+	var result strings.Builder
+	for i, r := range phoneNumber {
+		if r == '+' && i == 0 {
+			result.WriteRune(r)
+		} else if r >= '0' && r <= '9' {
+			result.WriteRune(r)
+		}
+	}
+
+	cleaned := result.String()
+	if !strings.HasPrefix(cleaned, "+") && cleaned != "" {
+		cleaned = "+" + cleaned
+	}
+	return cleaned
 }

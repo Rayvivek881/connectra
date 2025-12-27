@@ -44,13 +44,13 @@ func (f *PgCompanyFilters) IsEmpty() bool {
 
 func (f *PgCompanyFilters) ToQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	if len(f.Uuids) > 0 {
-		query.Where("uuid IN (?)", bun.In(f.Uuids))
+		query.Where("uuid IN (?)", bun.In(utilities.UniqueStringSlice(f.Uuids)))
 	}
 	if len(f.Names) > 0 {
-		query.Where("name IN (?)", bun.In(f.Names))
+		query.Where("name IN (?)", bun.In(utilities.UniqueStringSlice(f.Names)))
 	}
 	if len(f.NormalizedDomains) > 0 {
-		query.Where("normalized_domain IN (?)", bun.In(f.NormalizedDomains))
+		query.Where("normalized_domain IN (?)", bun.In(utilities.UniqueStringSlice(f.NormalizedDomains)))
 	}
 	if len(f.SelectColumns) > 0 {
 		query.Column(utilities.UniqueStringSlice(f.SelectColumns)...)

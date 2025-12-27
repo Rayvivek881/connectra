@@ -46,7 +46,8 @@ type ElasticContact struct {
 }
 
 func ElasticContactFromRawData(contact *PgContact, company *PgCompany) *ElasticContact {
-	return &ElasticContact{
+	serverTime := time.Now()
+	esContact := &ElasticContact{
 		Id:          contact.UUID,
 		FirstName:   contact.FirstName,
 		LastName:    contact.LastName,
@@ -77,8 +78,9 @@ func ElasticContactFromRawData(contact *PgContact, company *PgCompany) *ElasticC
 		CompanyLinkedinURL:      company.LinkedinURL,
 		CompanyWebsite:          company.Website,
 		CompanyNormalizedDomain: company.NormalizedDomain,
-		CreatedAt:               *contact.CreatedAt,
+		CreatedAt:               serverTime,
 	}
+	return esContact
 }
 
 type ElasticContactSearchResponse struct {

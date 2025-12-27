@@ -4,7 +4,11 @@ import (
 	"sync"
 	"vivek-ray/connections"
 	"vivek-ray/models"
+	companyService "vivek-ray/modules/companies/service"
+	contactService "vivek-ray/modules/contacts/service"
 	"vivek-ray/utilities"
+
+	"github.com/rs/zerolog/log"
 )
 
 type BatchUpsertSvc interface {
@@ -12,18 +16,19 @@ type BatchUpsertSvc interface {
 }
 
 type batchUpsertService struct {
-	companyRepo        models.PgCompanySvcRepo
-	contactRepo        models.PgContactSvcRepo
-	companyElasticRepo models.ElasticCompanySvcRepo
-	contactElasticRepo models.ElasticContactSvcRepo
+	companyService companyService.CompanySvcRepo
+	contactService contactService.ContactSvcRepo
 }
 
 func NewBatchUpsertService() BatchUpsertSvc {
+	tempFilters, err := models.FiltersRepository(connections.PgDBConnection.Client).GetTempFilters()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get temp filters")
+		return nil
+	}
 	return &batchUpsertService{
-		companyRepo:        models.PgCompanyRepository(connections.PgDBConnection.Client),
-		contactRepo:        models.PgContactRepository(connections.PgDBConnection.Client),
-		companyElasticRepo: models.ElasticCompanyRepository(connections.ElasticsearchConnection.Client),
-		contactElasticRepo: models.ElasticContactRepository(connections.ElasticsearchConnection.Client),
+		companyService: companyService.NewCompanyService(tempFilters),
+		contactService: contactService.NewContactService(tempFilters),
 	}
 }
 
@@ -33,11 +38,11 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var insertionError error
-	wg.Add(4)
+	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.companyRepo.BulkUpsert(pgCompanies); err != nil {
+		if err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
 			mu.Lock()
 			insertionError = err
 			mu.Unlock()
@@ -46,25 +51,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.contactRepo.BulkUpsert(pgContacts); err != nil {
-			mu.Lock()
-			insertionError = err
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if _, err := s.companyElasticRepo.BulkUpsert(esCompanies); err != nil {
-			mu.Lock()
-			insertionError = err
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if _, err := s.contactElasticRepo.BulkUpsert(esContacts); err != nil {
+		if err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
 			mu.Lock()
 			insertionError = err
 			mu.Unlock()
@@ -85,10 +72,10 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error
 		cleanedBatch = append(cleanedBatch, cleanedRow)
 	}
 
-	pgCompanies := make([]*models.PgCompany, 0, len(batch))
-	pgContacts := make([]*models.PgContact, 0, len(cleanedBatch))
-	esCompanies := make([]*models.ElasticCompany, 0, len(cleanedBatch))
-	esContacts := make([]*models.ElasticContact, 0, len(cleanedBatch))
+	pgCompanies := make([]*models.PgCompany, 0)
+	pgContacts := make([]*models.PgContact, 0)
+	esCompanies := make([]*models.ElasticCompany, 0)
+	esContacts := make([]*models.ElasticContact, 0)
 
 	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
 	for _, row := range cleanedBatch {

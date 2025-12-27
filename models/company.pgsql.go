@@ -74,7 +74,7 @@ func PgCompanyFromRawData(row map[string]string) *PgCompany {
 		FacebookURL:          row["facebook_url"],
 		TwitterURL:           row["twitter_url"],
 		CompanyNameForEmails: row["company_name_for_emails"],
-		PhoneNumber:          row["company_phone"],
+		PhoneNumber:          utilities.GetCleanedPhoneNumber(row["company_phone"]),
 		LatestFunding:        row["latest_funding"],
 		LatestFundingAmount:  utilities.StringToInt64(row["latest_funding_amount"]),
 		LastRaisedAt:         row["last_raised_at"],

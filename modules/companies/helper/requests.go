@@ -43,3 +43,19 @@ func BindFilterUpdateStatus(c *gin.Context) (FilterStatusUpdate, error) {
 
 	return statusUpdate, err
 }
+
+func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.ElasticCompany, error) {
+	pgCompanies := make([]*models.PgCompany, 0)
+	esCompanies := make([]*models.ElasticCompany, 0)
+	err := c.ShouldBindJSON(&pgCompanies)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(pgCompanies) > constants.MaxPageSize {
+		return nil, nil, constants.PageSizeExceededError
+	}
+	for _, pgCompany := range pgCompanies {
+		esCompanies = append(esCompanies, models.ElasticCompanyFromRawData(pgCompany))
+	}
+	return pgCompanies, esCompanies, nil
+}

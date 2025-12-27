@@ -70,7 +70,7 @@ func (s *filterService) getDirectDerivedFilterData(serviceType string, query mod
 			return nil, err
 		}
 		for _, item := range data {
-			if fieldValue := utilities.GetFieldValue(item, query.FilterKey); fieldValue != "" {
+			if fieldValue, ok := utilities.GetFieldValue(item, query.FilterKey).(string); ok && fieldValue != "" {
 				result = append(result, helper.FilterDataResponse{
 					Value:        fieldValue,
 					DisplayValue: fieldValue,
@@ -84,7 +84,7 @@ func (s *filterService) getDirectDerivedFilterData(serviceType string, query mod
 			return nil, err
 		}
 		for _, item := range data {
-			if fieldValue := utilities.GetFieldValue(item, query.FilterKey); fieldValue != "" {
+			if fieldValue, ok := utilities.GetFieldValue(item, query.FilterKey).(string); ok && fieldValue != "" {
 				result = append(result, helper.FilterDataResponse{
 					Value:        fieldValue,
 					DisplayValue: fieldValue,
@@ -99,4 +99,3 @@ func (s *filterService) getDirectDerivedFilterData(serviceType string, query mod
 func isValidService(serviceType string) bool {
 	return serviceType == constants.CompaniesService || serviceType == constants.ContactsService
 }
-

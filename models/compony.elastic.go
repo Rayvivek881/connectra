@@ -30,6 +30,7 @@ type ElasticCompany struct {
 }
 
 func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
+	serverTime := time.Now()
 	return &ElasticCompany{
 		Id:               company.UUID,
 		Name:             company.Name,
@@ -46,7 +47,7 @@ func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
 		LinkedinURL:      company.LinkedinURL,
 		Website:          company.Website,
 		NormalizedDomain: company.NormalizedDomain,
-		CreatedAt:        *company.CreatedAt,
+		CreatedAt:        serverTime,
 	}
 }
 

@@ -11,10 +11,10 @@ func main() {
 	v.Init()
 
 	connections.InitDB()
-	connections.InitS3()
 	defer connections.CloseDB()
 
 	connections.InitSearchEngine()
+	connections.InitS3()
 
 	cmd.Execute()
 }

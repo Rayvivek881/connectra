@@ -17,9 +17,16 @@ func FiltersRepository(db *bun.DB) FiltersSvcRepo {
 }
 
 type FiltersSvcRepo interface {
+	GetTempFilters() ([]*ModelFilter, error)
 	GetFiltersByService(service string) ([]*ModelFilter, error)
 	GetFilterByKeyAndService(service, key string) (ModelFilter, error)
 	UpdateActiveStatus(key, service string, status bool) error
+}
+
+func (t *FiltersStruct) GetTempFilters() ([]*ModelFilter, error) {
+	var filters []*ModelFilter
+	err := t.PgDbClient.NewSelect().Model(&filters).Where("direct_drived = false").Scan(context.Background())
+	return filters, err
 }
 
 func (t *FiltersStruct) GetFiltersByService(service string) ([]*ModelFilter, error) {

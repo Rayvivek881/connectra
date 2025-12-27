@@ -60,7 +60,7 @@ func PgContactFromRowData(row map[string]string, company *PgCompany) *PgContact 
 		Title:       row["title"],
 		Departments: utilities.SplitAndTrim(row["departments"], ","),
 
-		MobilePhone: row["mobile_phone"],
+		MobilePhone: utilities.GetCleanedPhoneNumber(row["mobile_phone"]),
 		EmailStatus: strings.ToLower(row["email_status"]),
 		Seniority:   strings.ToLower(row["seniority"]),
 		City:        strings.ToLower(row["city"]),
@@ -70,9 +70,9 @@ func PgContactFromRowData(row map[string]string, company *PgCompany) *PgContact 
 
 		FacebookURL:     row["facebook_url"],
 		TwitterURL:      row["twitter_url"],
-		WorkDirectPhone: row["work_direct_phone"],
-		HomePhone:       row["home_phone"],
-		OtherPhone:      row["other_phone"],
+		WorkDirectPhone: utilities.GetCleanedPhoneNumber(row["work_direct_phone"]),
+		HomePhone:       utilities.GetCleanedPhoneNumber(row["home_phone"]),
+		OtherPhone:      utilities.GetCleanedPhoneNumber(row["other_phone"]),
 		Stage:           strings.ToLower(row["stage"]),
 		CreatedAt:       &server_time,
 		UpdatedAt:       &server_time,

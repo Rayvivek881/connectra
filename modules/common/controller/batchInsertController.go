@@ -16,6 +16,10 @@ func BatchUpsert(c *gin.Context) {
 	}
 
 	batchService := service.NewBatchUpsertService()
+	if batchService == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize batch service", "success": false})
+		return
+	}
 	if err := batchService.ProcessBatchUpsert(request.Data); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
@@ -23,7 +27,6 @@ func BatchUpsert(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Batch upsert successful",
-		"count":   len(request.Data),
 		"success": true,
 	})
 }

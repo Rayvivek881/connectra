@@ -13,19 +13,25 @@ type ContactService struct {
 	contactElasticRepository models.ElasticContactSvcRepo
 	contactPgRepository      models.PgContactSvcRepo
 	companyPgRepository      models.PgCompanySvcRepo
+	filtersDataRepository    models.FiltersDataSvcRepo
+	tempFilters              []*models.ModelFilter
 }
 
-func NewContactService() ContactSvcRepo {
+func NewContactService(tempFilters []*models.ModelFilter) ContactSvcRepo {
 	return &ContactService{
 		contactElasticRepository: models.ElasticContactRepository(connections.ElasticsearchConnection.Client),
 		contactPgRepository:      models.PgContactRepository(connections.PgDBConnection.Client),
 		companyPgRepository:      models.PgCompanyRepository(connections.PgDBConnection.Client),
+		filtersDataRepository:    models.FiltersDataRepository(connections.PgDBConnection.Client),
+		tempFilters:              tempFilters,
 	}
 }
 
 type ContactSvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
+	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error
+	BulkUpsertToDb(pgContacts []*models.PgContact, esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error
 }
 
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
@@ -100,4 +106,74 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 func (s *ContactService) CountByFilters(query utilities.VQLQuery) (int64, error) {
 	elasticQuery := query.ToElasticsearchQuery(true, []string{})
 	return s.contactElasticRepository.CountByQueryMap(elasticQuery)
+}
+
+func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
+	esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error {
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var insertionError error
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		if _, err := s.contactPgRepository.BulkUpsert(pgContacts); err != nil {
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := s.contactElasticRepository.BulkUpsert(esContacts); err != nil {
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := s.filtersDataRepository.BulkUpsert(filtersData); err != nil {
+			mu.Lock()
+			insertionError = err
+			mu.Unlock()
+		}
+	}()
+
+	wg.Wait()
+	return insertionError
+}
+
+func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error {
+	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
+
+	for _, contact := range pgContacts {
+		for _, filter := range s.tempFilters {
+			if filter.Service != constants.ContactsService {
+				continue
+			}
+
+			fieldValue := utilities.GetFieldValue(contact, filter.Key)
+			values := utilities.ToStringSlice(fieldValue)
+
+			for _, value := range values {
+				filterUUID := utilities.GenerateUUID5(filter.Key + filter.Service + value)
+				if _, ok := insertedFilters[filterUUID]; ok || value == "" {
+					continue
+				}
+				insertedFilters[filterUUID] = struct{}{}
+				filtersData = append(filtersData, &models.ModelFilterData{
+					UUID:         filterUUID,
+					FilterKey:    filter.Key,
+					Service:      filter.Service,
+					DisplayValue: value,
+					Value:        value,
+				})
+			}
+		}
+	}
+	return s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
 }
