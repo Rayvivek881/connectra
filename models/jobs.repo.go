@@ -76,7 +76,7 @@ func (t *JobsStruct) BulkUpsert(jobs []*ModelJobs) error {
 		Model(&deduped).
 		On("CONFLICT(uuid) DO UPDATE").
 		Set("status = EXCLUDED.status").
-		Set("runtime_errors = EXCLUDED.runtime_errors").
+		Set("job_response = EXCLUDED.job_response").
 		Set("updated_at = CURRENT_TIMESTAMP").
 		Exec(context.Background())
 	return err

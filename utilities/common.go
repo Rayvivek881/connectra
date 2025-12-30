@@ -107,11 +107,11 @@ func ValidateElasticPagination(page, limit int) error {
 }
 
 func UniqueStringSlice(slice []string) []string {
-	seen := make(map[string]struct{})
+	seen := make(map[string]bool)
 	result := make([]string, 0)
 	for _, item := range slice {
 		if _, ok := seen[item]; !ok {
-			seen[item] = struct{}{}
+			seen[item] = true
 			result = append(result, item)
 		}
 	}
@@ -153,6 +153,9 @@ func StringToInt64(value string) int64 {
 }
 
 func SplitAndTrim(value, sep string) []string {
+	if value == "" {
+		return []string{}
+	}
 	parts := strings.Split(value, sep)
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -179,4 +182,30 @@ func GetCleanedPhoneNumber(phoneNumber string) string {
 		cleaned = "+" + cleaned
 	}
 	return cleaned
+}
+
+func CsvRowToMap(headers, row []string) map[string]string {
+	result := make(map[string]string)
+	for i, header := range headers {
+		result[header] = row[i]
+	}
+	return result
+}
+
+func StructToCsvSlice(v interface{}, columns []string) []string {
+	row := make([]string, len(columns))
+	for i, col := range columns {
+		val := GetFieldValue(v, col)
+		if val == nil {
+			row[i] = ""
+			continue
+		}
+		switch v := val.(type) {
+		case []string:
+			row[i] = strings.Join(v, ",")
+		default:
+			row[i] = fmt.Sprintf("%v", v)
+		}
+	}
+	return row
 }

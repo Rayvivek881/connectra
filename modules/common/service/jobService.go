@@ -26,12 +26,11 @@ func NewJobService() JobSvc {
 
 func (s *jobService) CreateJob(request helper.CreateJobRequest) error {
 	job := &models.ModelJobs{
-		UUID:          uuid.New().String(),
-		JobType:       request.JobType,
-		Data:          request.JobData,
-		Status:        constants.OpenJobStatus,
-		RuntimeErrors: make([]string, 0),
-		RetryCount:    request.RetryCount,
+		UUID:       uuid.New().String(),
+		JobType:    request.JobType,
+		Data:       request.JobData,
+		Status:     constants.OpenJobStatus,
+		RetryCount: request.RetryCount,
 	}
 	return s.jobsRepository.BulkUpsert([]*models.ModelJobs{job})
 }

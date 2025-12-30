@@ -54,5 +54,10 @@ type VQLQuery struct { // vivek Query Language
 type InsertFileJobData struct {
 	FileS3Key    string `json:"s3_key"`
 	FileS3Bucket string `json:"s3_bucket"`
-	FileType     string `json:"type"`
+}
+
+type ExportFileJobData struct {
+	FileS3Bucket string   `json:"s3_bucket"`
+	Service      string   `json:"service"`
+	VQL          VQLQuery `json:"vql"`
 }

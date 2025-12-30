@@ -1,9 +1,6 @@
 package constants
 
 var (
-	InsertFileJobType = "insert_file"
-	FileTypeCsv       = "csv"
-
 	OpenJobStatus       = "open"
 	InQueueJobStatus    = "in_queue"
 	ProcessingJobStatus = "processing"
@@ -13,6 +10,8 @@ var (
 	RetryInQueuedJobStatus = "retry_in_queued"
 	RetryingJobStatus      = "retrying"
 
-	NormalJobType = "normal"
-	RetryJobType  = "retry"
+	FirstTimeJobType = "first_time"
+	RetryJobType     = "retry"
+	InsertCsvFile    = "insert_csv_file"
+	ExportCsvFile    = "export_csv_file"
 )

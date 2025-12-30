@@ -86,7 +86,8 @@ func ElasticContactFromRawData(contact *PgContact, company *PgCompany) *ElasticC
 type ElasticContactSearchResponse struct {
 	Hits struct {
 		Hits []struct {
-			Source ElasticContact `json:"_source"`
+			Source      ElasticContact `json:"_source"`
+			SearchAfter []string       `json:"sort"`
 		} `json:"hits"`
 	} `json:"hits"`
 }

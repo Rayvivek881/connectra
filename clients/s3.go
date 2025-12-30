@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/rs/zerolog/log"
 )
@@ -179,4 +181,24 @@ func (c *S3Connection) ReadFileStream(ctx context.Context, bucket, key string) (
 
 	log.Debug().Msgf("Successfully opened file stream from S3: %s", key)
 	return result.Body, nil
+}
+
+func (c *S3Connection) WriteFileStream(ctx context.Context, bucket, key string, reader *io.PipeReader) error {
+	bufferedReader := bufio.NewReaderSize(reader, 512*1024) // 512KB buffer
+
+	uploader := manager.NewUploader(c.Client, func(u *manager.Uploader) {
+		u.PartSize = 5 * 1024 * 1024 // 5MB per part (S3 minimum)
+		u.Concurrency = 3
+	})
+
+	_, err := uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   bufferedReader,
+	})
+	if err != nil {
+		log.Error().Err(err).Msgf("Error writing file stream to S3: %s", key)
+		return err
+	}
+	return nil
 }

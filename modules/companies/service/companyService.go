@@ -5,6 +5,7 @@ import (
 	"vivek-ray/connections"
 	"vivek-ray/constants"
 	"vivek-ray/models"
+	"vivek-ray/modules/companies/helper"
 	"vivek-ray/utilities"
 )
 
@@ -25,7 +26,7 @@ func NewCompanyService(tempFilters []*models.ModelFilter) CompanySvcRepo {
 }
 
 type CompanySvcRepo interface {
-	ListByFilters(query utilities.VQLQuery) ([]*models.PgCompany, error)
+	ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
 	BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) error
 	BulkUpsertToDb(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany, filtersData []*models.ModelFilterData) error
@@ -36,10 +37,10 @@ func (s *CompanyService) GetCompanyByUuids(uuids []string, selectColumns []strin
 	return s.companyPgRepository.ListByFilters(models.PgCompanyFilters{Uuids: uuids, SelectColumns: selectColumns})
 }
 
-func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]*models.PgCompany, error) {
+func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error) {
 	sourcefields := []string{"id"}
 	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
-	elasticCompanies, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
+	elasticCompanies, searchAfter, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,11 @@ func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]*models.PgCo
 	for _, company := range elasticCompanies {
 		companyUuids = append(companyUuids, company.Id)
 	}
-	return s.GetCompanyByUuids(companyUuids, query.SelectColumns)
+	companies, err := s.GetCompanyByUuids(companyUuids, query.SelectColumns)
+	if err != nil {
+		return nil, err
+	}
+	return helper.ToCompanyResponses(companies, searchAfter), nil
 }
 
 func (s *CompanyService) CountByFilters(query utilities.VQLQuery) (int64, error) {

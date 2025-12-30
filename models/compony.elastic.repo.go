@@ -22,15 +22,16 @@ func ElasticCompanyRepository(client *elasticsearch.Client) ElasticCompanySvcRep
 }
 
 type ElasticCompanySvcRepo interface {
-	ListByQueryMap(query map[string]any) ([]*ElasticCompany, error)
+	ListByQueryMap(query map[string]any) ([]*ElasticCompany, []string, error)
 	CountByQueryMap(query map[string]any) (int64, error)
 	BulkUpsert(companies []*ElasticCompany) (int64, error)
 }
 
-func (t *ElasticCompanyStruct) ListByQueryMap(query map[string]any) ([]*ElasticCompany, error) {
+func (t *ElasticCompanyStruct) ListByQueryMap(query map[string]any) ([]*ElasticCompany, []string, error) {
 	queryJson, err := json.Marshal(query)
+	searchAfter := make([]string, 0)
 	if err != nil {
-		return nil, err
+		return nil, searchAfter, err
 	}
 
 	queryReader := bytes.NewReader(queryJson)
@@ -39,26 +40,27 @@ func (t *ElasticCompanyStruct) ListByQueryMap(query map[string]any) ([]*ElasticC
 		t.ElasticClient.Search.WithBody(queryReader),
 	)
 	if err != nil {
-		return nil, err
+		return nil, searchAfter, err
 	}
 	defer response.Body.Close()
 
 	if response.IsError() {
 		bodyBytes, _ := io.ReadAll(response.Body)
-		return nil, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+		return nil, searchAfter, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
 	}
 
 	var searchResponse ElasticCompanySearchResponse
 	if err := json.NewDecoder(response.Body).Decode(&searchResponse); err != nil {
-		return nil, err
+		return nil, searchAfter, err
 	}
 
 	result := make([]*ElasticCompany, 0, len(searchResponse.Hits.Hits))
 	for _, hit := range searchResponse.Hits.Hits {
 		result = append(result, &hit.Source)
+		searchAfter = hit.SearchAfter
 	}
 
-	return result, nil
+	return result, searchAfter, nil
 }
 
 func (t *ElasticCompanyStruct) CountByQueryMap(query map[string]any) (int64, error) {

@@ -17,3 +17,19 @@ func ToFilterDataResponses(data []*models.ModelFilterData) []FilterDataResponse 
 	}
 	return responses
 }
+
+type CompanyResponse struct {
+	*models.PgCompany
+	SearchAfter []string `json:"search_after,omitempty"`
+}
+
+func ToCompanyResponses(companies []*models.PgCompany, searchAfter []string) []CompanyResponse {
+	responses := make([]CompanyResponse, 0)
+	for _, company := range companies {
+		responses = append(responses, CompanyResponse{
+			PgCompany:   company,
+			SearchAfter: searchAfter,
+		})
+	}
+	return responses
+}

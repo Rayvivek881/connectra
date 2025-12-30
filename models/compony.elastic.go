@@ -54,7 +54,8 @@ func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
 type ElasticCompanySearchResponse struct {
 	Hits struct {
 		Hits []struct {
-			Source ElasticCompany `json:"_source"`
+			Source      ElasticCompany `json:"_source"`
+			SearchAfter []string       `json:"sort"`
 		} `json:"hits"`
 	} `json:"hits"`
 }

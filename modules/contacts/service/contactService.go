@@ -37,7 +37,7 @@ type ContactSvcRepo interface {
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
 	sourcefields := []string{"id", "company_id"}
 	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
-	elasticContacts, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
+	elasticContacts, searchAfter, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +85,9 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 
 	for _, contact := range pgContacts {
 		contactResponses = append(contactResponses, helper.ContactResponse{
-			PgContact: contact,
-			Company:   nil,
+			PgContact:   contact,
+			Company:     nil,
+			SearchAfter: searchAfter,
 		})
 	}
 
