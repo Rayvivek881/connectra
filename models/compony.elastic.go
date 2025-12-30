@@ -51,12 +51,13 @@ func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
 	}
 }
 
+type ElasticCompanySearchHit struct {
+	Company ElasticCompany `json:"_source"`
+	Cursor  []string       `json:"sort"`
+}
 type ElasticCompanySearchResponse struct {
 	Hits struct {
-		Hits []struct {
-			Source      ElasticCompany `json:"_source"`
-			SearchAfter []string       `json:"sort"`
-		} `json:"hits"`
+		Hits []*ElasticCompanySearchHit `json:"hits"`
 	} `json:"hits"`
 }
 

@@ -37,14 +37,16 @@ type ContactSvcRepo interface {
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
 	sourcefields := []string{"id", "company_id"}
 	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
-	elasticContacts, searchAfter, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
+	esHits, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
 	}
 	contactResponses, contactUuids, companyIds := make([]helper.ContactResponse, 0), make([]string, 0), make([]string, 0)
-	for _, contact := range elasticContacts {
-		contactUuids = append(contactUuids, contact.Id)
-		companyIds = append(companyIds, contact.CompanyID)
+	cursors := make(map[string][]string)
+	for _, esHit := range esHits {
+		contactUuids = append(contactUuids, esHit.Contact.Id)
+		cursors[esHit.Contact.Id] = esHit.Cursor
+		companyIds = append(companyIds, esHit.Contact.CompanyID)
 	}
 	if len(query.SelectColumns) != 0 {
 		query.SelectColumns = append(query.SelectColumns, "company_id")
@@ -85,9 +87,9 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 
 	for _, contact := range pgContacts {
 		contactResponses = append(contactResponses, helper.ContactResponse{
-			PgContact:   contact,
-			Company:     nil,
-			SearchAfter: searchAfter,
+			PgContact: contact,
+			Company:   nil,
+			Cursor:    cursors[contact.UUID],
 		})
 	}
 

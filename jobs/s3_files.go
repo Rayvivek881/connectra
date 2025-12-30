@@ -96,7 +96,7 @@ func ExportContactsCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) er
 			}
 		}
 
-		vql.SearchAfter = contacts[len(contacts)-1].SearchAfter
+		vql.Cursor = contacts[len(contacts)-1].Cursor
 		csvWriter.Flush()
 	}
 	return nil
@@ -124,7 +124,7 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 				return err
 			}
 		}
-		vql.SearchAfter = companies[len(companies)-1].SearchAfter
+		vql.Cursor = companies[len(companies)-1].Cursor
 		csvWriter.Flush()
 	}
 	return nil
@@ -132,7 +132,7 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 
 func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobData) error {
 	vql := jobData.VQL
-	vql.OrderBy = []utilities.FilterOrder{{OrderBy: "id", OrderDirection: "desc"}}
+	vql.OrderBy = []utilities.FilterOrder{{OrderBy: "created_at", OrderDirection: "desc"}}
 	vql.Limit = conf.JobConfig.BatchSize
 
 	if len(vql.SelectColumns) == 0 {

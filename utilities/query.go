@@ -153,8 +153,8 @@ func (q *VQLQuery) buildBoolQuery() map[string]any {
 }
 
 func (q *VQLQuery) addPagination(resultQuery map[string]any) {
-	if len(q.SearchAfter) > 0 {
-		resultQuery["search_after"] = q.SearchAfter
+	if len(q.Cursor) > 0 {
+		resultQuery["search_after"] = q.Cursor
 	}
 	if q.Page > 0 {
 		resultQuery["from"] = (q.Page - 1) * q.Limit

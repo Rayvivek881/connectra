@@ -22,16 +22,15 @@ func ElasticContactRepository(client *elasticsearch.Client) ElasticContactSvcRep
 }
 
 type ElasticContactSvcRepo interface {
-	ListByQueryMap(query map[string]any) ([]*ElasticContact, []string, error)
+	ListByQueryMap(query map[string]any) ([]*ElasticContactSearchHit, error)
 	CountByQueryMap(query map[string]any) (int64, error)
 	BulkUpsert(contacts []*ElasticContact) (int64, error)
 }
 
-func (t *ElasticContactStruct) ListByQueryMap(query map[string]any) ([]*ElasticContact, []string, error) {
+func (t *ElasticContactStruct) ListByQueryMap(query map[string]any) ([]*ElasticContactSearchHit, error) {
 	queryJson, err := json.Marshal(query)
-	searchAfter := make([]string, 0)
 	if err != nil {
-		return nil, searchAfter, err
+		return nil, err
 	}
 
 	queryReader := bytes.NewReader(queryJson)
@@ -40,26 +39,21 @@ func (t *ElasticContactStruct) ListByQueryMap(query map[string]any) ([]*ElasticC
 		t.ElasticClient.Search.WithBody(queryReader),
 	)
 	if err != nil {
-		return nil, searchAfter, err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.IsError() {
 		bodyBytes, _ := io.ReadAll(response.Body)
-		return nil, searchAfter, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
 	}
 
 	var searchResponse ElasticContactSearchResponse
 	if err := json.NewDecoder(response.Body).Decode(&searchResponse); err != nil {
-		return nil, searchAfter, err
+		return nil, err
 	}
 
-	result := make([]*ElasticContact, 0, len(searchResponse.Hits.Hits))
-	for _, hit := range searchResponse.Hits.Hits {
-		result = append(result, &hit.Source)
-		searchAfter = hit.SearchAfter
-	}
-	return result, searchAfter, nil
+	return searchResponse.Hits.Hits, nil
 }
 
 func (t *ElasticContactStruct) CountByQueryMap(query map[string]any) (int64, error) {

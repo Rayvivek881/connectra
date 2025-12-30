@@ -22,6 +22,6 @@ func ToFilterDataResponses(data []*models.ModelFilterData) []FilterDataResponse 
 
 type ContactResponse struct {
 	*models.PgContact
-	Company     *models.PgCompany `json:"company,omitempty"`
-	SearchAfter []string          `json:"search_after,omitempty"`
+	Company *models.PgCompany `json:"company,omitempty"`
+	Cursor  []string          `json:"cursor,omitempty"`
 }
