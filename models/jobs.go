@@ -20,12 +20,12 @@ type ModelJobs struct {
 	Id          uint64          `bun:"id,pk,autoincrement" json:"id"`
 	UUID        string          `bun:"uuid,notnull,unique" json:"uuid"`
 	JobType     string          `bun:"job_type,notnull" json:"job_type"`
-	Data        json.RawMessage `bun:"data,type:jsonb" json:"data"`
-	Status      string          `bun:"status,notnull" json:"status"`
-	JobResponse json.RawMessage `bun:"job_response,type:jsonb" json:"job_response"`
+	Data        json.RawMessage `bun:"data,type:jsonb,default:'{}'" json:"data"`
+	Status      string          `bun:"status,notnull,default:'open'" json:"status"`
+	JobResponse json.RawMessage `bun:"job_response,type:jsonb,default:'{}'" json:"job_response"`
 
 	RetryCount    int        `bun:"retry_count,notnull,default:0" json:"retry_count"`
-	RetryInterval int        `bun:"retry_interval,notnull,default:0" json:"retry_interval"`
+	RetryInterval int        `bun:"retry_interval,notnull,default:30" json:"retry_interval"`
 	RunAfter      *time.Time `bun:"run_after,nullzero" json:"run_after"`
 
 	CreatedAt *time.Time `bun:"created_at,nullzero,default:current_timestamp" json:"created_at"`

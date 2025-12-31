@@ -92,11 +92,11 @@ func (t *ElasticContactStruct) BulkUpsert(contacts []*ElasticContact) (int64, er
 		meta := map[string]any{
 			"index": map[string]any{
 				"_index": constants.ContactIndex,
-				"_id":    contact.Id,
+				"_id":    contact.UUID,
 			},
 		}
 		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, contact) != nil {
-			log.Error().Msgf("Failed to add contact to buffer: %v", contact.Id)
+			log.Error().Msgf("Failed to add contact to buffer: %v", contact.UUID)
 			continue
 		}
 	}

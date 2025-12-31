@@ -9,7 +9,7 @@ import (
 type ElasticContact struct {
 	client *elasticsearch.Client
 
-	Id string `json:"id"`
+	UUID string `json:"uuid"`
 
 	FirstName   string   `json:"first_name"`  // text search
 	LastName    string   `json:"last_name"`   // text search
@@ -48,7 +48,7 @@ type ElasticContact struct {
 func ElasticContactFromRawData(contact *PgContact, company *PgCompany) *ElasticContact {
 	serverTime := time.Now()
 	esContact := &ElasticContact{
-		Id:          contact.UUID,
+		UUID:        contact.UUID,
 		FirstName:   contact.FirstName,
 		LastName:    contact.LastName,
 		CompanyID:   contact.CompanyID,

@@ -91,11 +91,11 @@ func (t *ElasticCompanyStruct) BulkUpsert(companies []*ElasticCompany) (int64, e
 		meta := map[string]any{
 			"index": map[string]any{
 				"_index": constants.CompanyIndex,
-				"_id":    company.Id,
+				"_id":    company.UUID,
 			},
 		}
 		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, company) != nil {
-			log.Error().Msgf("Failed to add company to buffer: %v", company.Id)
+			log.Error().Msgf("Failed to add company to buffer: %v", company.UUID)
 			continue
 		}
 	}

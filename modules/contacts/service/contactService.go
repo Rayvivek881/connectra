@@ -36,7 +36,7 @@ type ContactSvcRepo interface {
 }
 
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
-	sourceFields := []string{"id", "company_id"}
+	sourceFields := []string{"uuid", "company_id"}
 	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
 	esHits, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
@@ -45,8 +45,8 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 	contactResponses, contactUuids, companyIds := make([]helper.ContactResponse, 0), make([]string, 0), make([]string, 0)
 	cursors := make(map[string][]string)
 	for _, esHit := range esHits {
-		contactUuids = append(contactUuids, esHit.Contact.Id)
-		cursors[esHit.Contact.Id] = esHit.Cursor
+		contactUuids = append(contactUuids, esHit.Contact.UUID)
+		cursors[esHit.Contact.UUID] = esHit.Cursor
 		companyIds = append(companyIds, esHit.Contact.CompanyID)
 	}
 	if len(query.SelectColumns) != 0 {
@@ -86,14 +86,19 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 		return nil, constants.FailedToFetchDataError
 	}
 
+	pgContactsMap := make(map[string]*models.PgContact)
 	for _, contact := range pgContacts {
-		contactResponses = append(contactResponses, helper.ContactResponse{
-			PgContact: contact,
-			Company:   nil,
-			Cursor:    cursors[contact.UUID],
-		})
+		pgContactsMap[contact.UUID] = contact
 	}
-
+	for _, uuid := range contactUuids {
+		if contact, ok := pgContactsMap[uuid]; ok {
+			contactResponses = append(contactResponses, helper.ContactResponse{
+				PgContact: contact,
+				Company:   nil,
+				Cursor:    cursors[uuid],
+			})
+		}
+	}
 	if shouldPopulateCompanies {
 		companiesMap := make(map[string]*models.PgCompany)
 		for _, company := range companies {

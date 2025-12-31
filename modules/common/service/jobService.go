@@ -2,7 +2,6 @@ package service
 
 import (
 	"vivek-ray/connections"
-	"vivek-ray/constants"
 	"vivek-ray/models"
 	"vivek-ray/modules/common/helper"
 
@@ -29,7 +28,6 @@ func (s *jobService) CreateJob(request helper.CreateJobRequest) error {
 		UUID:       uuid.New().String(),
 		JobType:    request.JobType,
 		Data:       request.JobData,
-		Status:     constants.OpenJobStatus,
 		RetryCount: request.RetryCount,
 	}
 	return s.jobsRepository.BulkUpsert([]*models.ModelJobs{job})

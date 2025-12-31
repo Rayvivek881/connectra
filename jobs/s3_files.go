@@ -132,7 +132,7 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 
 func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobData) error {
 	vql := jobData.VQL
-	vql.OrderBy = []utilities.FilterOrder{{OrderBy: "id", OrderDirection: "desc"}}
+	vql.OrderBy = []utilities.FilterOrder{{OrderBy: "uuid", OrderDirection: "desc"}}
 	vql.Limit = conf.JobConfig.BatchSize
 
 	if len(vql.SelectColumns) == 0 {

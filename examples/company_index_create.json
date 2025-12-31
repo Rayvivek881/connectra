@@ -4,18 +4,21 @@
     "number_of_replicas": 1,
     "index": {
       "codec": "best_compression",
-      "max_ngram_diff": 8,
+      "max_ngram_diff": 6,
       "analysis": {
         "analyzer": {
           "ngram_analyzer": {
             "tokenizer": "standard",
-            "filter": ["lowercase", "ngram_filter"]
+            "filter": [
+              "lowercase",
+              "ngram_filter"
+            ]
           }
         },
         "filter": {
           "ngram_filter": {
             "type": "ngram",
-            "min_gram": 3,
+            "min_gram": 5,
             "max_gram": 10
           }
         }
@@ -24,28 +27,33 @@
   },
   "mappings": {
     "properties": {
-      "id": {
-        "type": "keyword",
-        "doc_values": true
-      },
-      "name": {
+      "address": {
         "type": "text",
-        "analyzer": "standard",
         "fields": {
           "ngram": {
             "type": "text",
             "analyzer": "ngram_analyzer"
           }
-        }
-      },
-      "employees_count": {
-        "type": "long"
+        },
+        "analyzer": "standard"
       },
       "annual_revenue": {
         "type": "long"
       },
-      "total_funding": {
+      "city": {
+        "type": "keyword"
+      },
+      "country": {
+        "type": "keyword"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "employees_count": {
         "type": "long"
+      },
+      "uuid": {
+        "type": "keyword"
       },
       "industries": {
         "type": "keyword"
@@ -53,40 +61,47 @@
       "keywords": {
         "type": "keyword"
       },
-      "technologies": {
+      "linkedin_url": {
         "type": "keyword"
       },
-      "address": {
+      "name": {
         "type": "text",
-        "analyzer": "standard"
-      },
-      "city": {
-        "type": "text",
-        "analyzer": "standard"
-      },
-      "state": {
-        "type": "text",
-        "analyzer": "standard"
-      },
-      "country": {
-        "type": "text",
-        "analyzer": "standard"
-      },
-      "linkedin_url": {
-        "type": "text",
-        "analyzer": "standard"
-      },
-      "website": {
-        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
         "analyzer": "standard"
       },
       "normalized_domain": {
         "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
         "analyzer": "standard"
       },
-      "created_at": {
-        "type": "date",
-        "format": "strict_date_optional_time||epoch_millis"
+      "state": {
+        "type": "keyword"
+      },
+      "technologies": {
+        "type": "keyword"
+      },
+      "total_funding": {
+        "type": "long"
+      },
+      "website": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
       }
     }
   }

@@ -39,7 +39,7 @@ func (s *CompanyService) GetCompanyByUuids(uuids []string, selectColumns []strin
 }
 
 func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error) {
-	sourceFields := []string{"id"}
+	sourceFields := []string{"uuid"}
 	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
 	esHits, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
@@ -47,14 +47,14 @@ func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.Compa
 	}
 	companyUuids, cursors := make([]string, 0), make(map[string][]string)
 	for _, esHit := range esHits {
-		companyUuids = append(companyUuids, esHit.Company.Id)
-		cursors[esHit.Company.Id] = esHit.Cursor
+		companyUuids = append(companyUuids, esHit.Company.UUID)
+		cursors[esHit.Company.UUID] = esHit.Cursor
 	}
 	companies, err := s.GetCompanyByUuids(companyUuids, query.SelectColumns)
 	if err != nil {
 		return nil, err
 	}
-	return helper.ToCompanyResponses(companies, cursors), nil
+	return helper.ToCompanyResponses(companies, companyUuids, cursors), nil
 }
 
 func (s *CompanyService) CountByFilters(query utilities.VQLQuery) (int64, error) {

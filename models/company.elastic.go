@@ -9,7 +9,7 @@ import (
 type ElasticCompany struct {
 	client *elasticsearch.Client
 
-	Id string `json:"id"`
+	UUID string `json:"uuid"`
 
 	Name             string   `json:"name"`              // text search
 	EmployeesCount   int64    `json:"employees_count"`   // number search
@@ -32,7 +32,7 @@ type ElasticCompany struct {
 func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
 	serverTime := time.Now()
 	return &ElasticCompany{
-		Id:               company.UUID,
+		UUID:             company.UUID,
 		Name:             company.Name,
 		EmployeesCount:   company.EmployeesCount,
 		Industries:       company.Industries,
