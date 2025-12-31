@@ -107,11 +107,11 @@ func ValidateElasticPagination(page, limit int) error {
 }
 
 func UniqueStringSlice(slice []string) []string {
-	seen := make(map[string]bool)
+	seen := make(map[string]struct{})
 	result := make([]string, 0)
 	for _, item := range slice {
 		if _, ok := seen[item]; !ok {
-			seen[item] = true
+			seen[item] = struct{}{}
 			result = append(result, item)
 		}
 	}
@@ -153,9 +153,6 @@ func StringToInt64(value string) int64 {
 }
 
 func SplitAndTrim(value, sep string) []string {
-	if value == "" {
-		return []string{}
-	}
 	parts := strings.Split(value, sep)
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {
