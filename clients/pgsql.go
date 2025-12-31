@@ -69,5 +69,6 @@ func (c *PgsqlConnection) Close() {
 	if err := c.Client.Close(); err != nil {
 		log.Error().Msg("Already close pgsql connection")
 	}
+	log.Info().Msgf("PostgreSQL Closed Successfully")
 	c.Client = nil
 }

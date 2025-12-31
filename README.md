@@ -723,7 +723,7 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 
 | Mode | Command | Workers | Poll Interval | Job Status |
 |------|---------|---------|---------------|------------|
-| **First-time** | `jobs first_time` | Configurable (default 4) | Seconds | `open` → `in_queue` |
+| **First-time** | `jobs first_time` | Configurable (default 4) | Minutes | `open` → `in_queue` |
 | **Retry** | `jobs retry` | 1 (controlled) | Minutes | `failed` → `retry_in_queued` |
 
 ### Job State Machine
@@ -1103,7 +1103,7 @@ type ContactService struct {
 | **First-time Workers** | Configurable (default 4) | `PARALLEL_JOBS` env |
 | **Retry Workers** | 1 (single worker) | Hardcoded for controlled retries |
 | **Batch Size** | Configurable (default 500) | `BATCH_SIZE_FOR_INSERTION` |
-| **First-time Poll Interval** | Configurable seconds | `TICKER_INTERVAL` env |
+| **First-time Poll Interval** | Configurable minutes | `TICKER_INTERVAL` env |
 | **Retry Poll Interval** | Configurable minutes | `TICKER_INTERVAL` env |
 | **Rate Limit** | Configurable req/min | Token bucket algorithm |
 | **ES Shards** | 6 primary, 1 replica | Index settings |
@@ -1406,7 +1406,7 @@ S3_UPLOAD_FILE_PATH_PREFIX=uploads
 # Jobs Configuration
 PARALLEL_JOBS=4                    # Number of concurrent workers (first_time mode)
 BATCH_SIZE_FOR_INSERTION=500       # Records per batch for CSV processing
-TICKER_INTERVAL=5                  # Seconds (first_time) / Minutes (retry) between polls
+TICKER_INTERVAL=5                  # minutes (first_time) / Minutes (retry) between polls
 JOB_IN_QUEUE_SIZE=100              # Max jobs in channel before backpressure
 ```
 
