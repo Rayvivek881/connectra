@@ -2,8 +2,6 @@ package helper
 
 import (
 	"encoding/json"
-	"errors"
-	"strconv"
 	"vivek-ray/constants"
 	"vivek-ray/models"
 	"vivek-ray/utilities"
@@ -22,11 +20,11 @@ func BindAndValidateBatchInsert(c *gin.Context) (BatchInsertRequest, error) {
 	}
 
 	if len(request.Data) == 0 {
-		return request, errors.New("data array is empty")
+		return request, constants.DataArrayEmptyError
 	}
 
 	if len(request.Data) > constants.MaxPageSize {
-		return request, errors.New("batch size cannot exceed " + strconv.Itoa(constants.MaxPageSize))
+		return request, constants.BatchSizeExceededError
 	}
 
 	return request, nil
@@ -56,13 +54,13 @@ func BindAndValidateCreateJob(c *gin.Context) (CreateJobRequest, error) {
 	}
 
 	if request.JobType == "" {
-		return request, errors.New("job_type is required")
+		return request, constants.JobTypeRequiredError
 	}
 	if request.RetryCount < 0 {
-		return request, errors.New("retry_count cannot be negative")
+		return request, constants.RetryCountNegativeError
 	}
 	if len(request.JobData) == 0 {
-		return request, errors.New("job_data is required")
+		return request, constants.JobDataRequiredError
 	}
 
 	return request, nil
@@ -81,10 +79,10 @@ func BindAndValidateListJobs(c *gin.Context) (ListJobsRequest, error) {
 	}
 
 	if request.Limit < 0 {
-		return request, errors.New("limit cannot be negative")
+		return request, constants.LimitNegativeError
 	}
 	if request.Limit > constants.MaxPageSize {
-		return request, errors.New("limit cannot exceed 100")
+		return request, constants.LimitExceededError
 	}
 
 	return request, nil

@@ -136,7 +136,7 @@ func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobDat
 	vql.Limit = conf.JobConfig.BatchSize
 
 	if len(vql.SelectColumns) == 0 {
-		return errors.New("select columns are required")
+		return constants.SelectColumnsRequiredError
 	}
 
 	switch jobData.Service {
@@ -145,7 +145,7 @@ func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobDat
 	case constants.CompaniesService:
 		return ExportCompaniesCsvToStream(writer, vql)
 	default:
-		return errors.New("invalid service")
+		return constants.InvalidServiceError
 	}
 }
 

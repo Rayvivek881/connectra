@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 	"vivek-ray/conf"
@@ -51,7 +50,7 @@ func (j *JobStruct) JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsCha
 				jobError = err
 			}
 		default:
-			jobError = fmt.Errorf("invalid job type: %s", job.JobType)
+			jobError = constants.InvalidJobTypeError(job.JobType)
 		}
 
 		if jobError != nil {
@@ -87,7 +86,7 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 	var wg sync.WaitGroup
 	jobsChannel := make(chan models.ModelJobs, 1000)
 
-	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
+	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Second)
 	defer func() {
 		ticker.Stop()
 		wg.Wait()

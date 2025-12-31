@@ -13,6 +13,7 @@ type app struct {
 	ENV                  string `mapstructure:"APP_ENV"`
 	APIKey               string `mapstructure:"API_KEY"`
 	MaxRequestsPerMinute int    `mapstructure:"MAX_REQUESTS_PER_MINUTE"`
+	MemoryLogInterval    int    `mapstructure:"MEMORY_LOG_INTERVAL_SECONDS"`
 }
 
 type jobConfig struct {

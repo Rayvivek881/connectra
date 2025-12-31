@@ -3,7 +3,6 @@ package models
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"vivek-ray/constants"
 	"vivek-ray/utilities"
@@ -46,7 +45,7 @@ func (t *ElasticCompanyStruct) ListByQueryMap(query map[string]any) ([]*ElasticC
 
 	if response.IsError() {
 		bodyBytes, _ := io.ReadAll(response.Body)
-		return nil, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+		return nil, constants.ElasticsearchError(response.StatusCode, string(bodyBytes))
 	}
 
 	var searchResponse ElasticCompanySearchResponse
@@ -74,7 +73,7 @@ func (t *ElasticCompanyStruct) CountByQueryMap(query map[string]any) (int64, err
 
 	if response.IsError() {
 		bodyBytes, _ := io.ReadAll(response.Body)
-		return 0, fmt.Errorf("elasticsearch error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+		return 0, constants.ElasticsearchError(response.StatusCode, string(bodyBytes))
 	}
 
 	var countResponse utilities.ElasticCount
@@ -108,7 +107,7 @@ func (t *ElasticCompanyStruct) BulkUpsert(companies []*ElasticCompany) (int64, e
 
 	if response.IsError() {
 		bodyBytes, _ := io.ReadAll(response.Body)
-		return 0, fmt.Errorf("elasticsearch bulk error: status %d, body: %s", response.StatusCode, string(bodyBytes))
+		return 0, constants.ElasticsearchBulkError(response.StatusCode, string(bodyBytes))
 	}
 
 	return int64(len(companies)), nil

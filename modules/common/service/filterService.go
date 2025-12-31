@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"vivek-ray/connections"
 	"vivek-ray/constants"
 	"vivek-ray/models"
@@ -32,14 +31,14 @@ func NewFilterService() FilterSvc {
 
 func (s *filterService) GetFilters(serviceType string) ([]*models.ModelFilter, error) {
 	if !isValidService(serviceType) {
-		return nil, errors.New("invalid service type")
+		return nil, constants.InvalidServiceTypeError
 	}
 	return s.filtersRepository.GetFiltersByService(serviceType)
 }
 
 func (s *filterService) GetFilterData(serviceType string, query models.FiltersDataQuery) ([]helper.FilterDataResponse, error) {
 	if !isValidService(serviceType) {
-		return nil, errors.New("invalid service type")
+		return nil, constants.InvalidServiceTypeError
 	}
 
 	query.Service = serviceType

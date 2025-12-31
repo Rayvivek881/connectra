@@ -72,10 +72,9 @@ func (c *MongoConnection) Open() {
 }
 
 func (c *MongoConnection) CloseConnection() {
-	defer func() {
-		if err := c.Client.Disconnect(context.TODO()); err != nil {
-			log.Error().Msgf("unable to discunnect mongo with %v", err.Error())
-			return
-		}
-	}()
+	if err := c.Client.Disconnect(context.TODO()); err != nil {
+		log.Error().Msgf("unable to disconnect mongo with error %v", err.Error())
+		return
+	}
+	log.Info().Msg("MongoDB connection closed")
 }

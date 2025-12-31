@@ -41,7 +41,7 @@ func startServer() {
 	router.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-API-Key"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-API-Key", "Connection"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
 		AllowCredentials: false,
 	}))
@@ -79,6 +79,4 @@ func startServer() {
 	if err := srv.Shutdown(context.TODO()); err != nil {
 		log.Error().Err(err).Msg("Server forced to shutdown")
 	}
-
-	log.Info().Msg("Server exited")
 }
