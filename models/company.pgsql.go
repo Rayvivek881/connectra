@@ -46,7 +46,7 @@ type PgCompany struct {
 
 func PgCompanyFromRawData(row map[string]string) *PgCompany {
 	companyName, email := row["company"], strings.ToLower(row["email"])
-	server_time, linkedinURL := time.Now(), strings.ToLower(row["company_linkedin_url"])
+	serverTime, linkedinURL := time.Now(), strings.ToLower(row["company_linkedin_url"])
 	var normalizedDomain string
 	if _, domain, found := strings.Cut(email, "@"); found {
 		normalizedDomain = domain
@@ -79,8 +79,8 @@ func PgCompanyFromRawData(row map[string]string) *PgCompany {
 		LatestFundingAmount:  utilities.StringToInt64(row["latest_funding_amount"]),
 		LastRaisedAt:         row["last_raised_at"],
 
-		CreatedAt: &server_time,
-		UpdatedAt: &server_time,
+		CreatedAt: &serverTime,
+		UpdatedAt: &serverTime,
 	}
 }
 

@@ -11,3 +11,4 @@ var (
 	MaxElasticPageNumber = 10
 	MaxPageSize          = 100
 )
+

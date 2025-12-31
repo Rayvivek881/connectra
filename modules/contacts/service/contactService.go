@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"sync"
 	"vivek-ray/connections"
 	"vivek-ray/constants"
@@ -35,8 +36,8 @@ type ContactSvcRepo interface {
 }
 
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
-	sourcefields := []string{"id", "company_id"}
-	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
+	sourceFields := []string{"id", "company_id"}
+	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
 	esHits, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
@@ -123,7 +124,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 		defer wg.Done()
 		if _, err := s.contactPgRepository.BulkUpsert(pgContacts); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()
@@ -132,7 +133,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 		defer wg.Done()
 		if _, err := s.contactElasticRepository.BulkUpsert(esContacts); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()
@@ -141,7 +142,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 		defer wg.Done()
 		if err := s.filtersDataRepository.BulkUpsert(filtersData); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()

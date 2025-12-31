@@ -9,6 +9,7 @@ import (
 	"vivek-ray/utilities"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/rs/zerolog/log"
 )
 
 type ElasticContactStruct struct {
@@ -95,6 +96,7 @@ func (t *ElasticContactStruct) BulkUpsert(contacts []*ElasticContact) (int64, er
 			},
 		}
 		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, contact) != nil {
+			log.Error().Msgf("Failed to add contact to buffer: %v", contact.Id)
 			continue
 		}
 	}

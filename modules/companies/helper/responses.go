@@ -9,10 +9,10 @@ type FilterDataResponse struct {
 
 func ToFilterDataResponses(data []*models.ModelFilterData) []FilterDataResponse {
 	responses := make([]FilterDataResponse, 0)
-	for _, curr_data := range data {
+	for _, item := range data {
 		responses = append(responses, FilterDataResponse{
-			Value:        curr_data.Value,
-			DisplayValue: curr_data.DisplayValue,
+			Value:        item.Value,
+			DisplayValue: item.DisplayValue,
 		})
 	}
 	return responses
@@ -33,3 +33,4 @@ func ToCompanyResponses(companies []*models.PgCompany, cursors map[string][]stri
 	}
 	return responses
 }
+

@@ -49,7 +49,7 @@ func (s *filterService) GetFilterData(serviceType string, query models.FiltersDa
 		return nil, err
 	}
 
-	if !filterData.DirectDrived {
+	if !filterData.DirectDerived {
 		data, err := s.filtersDataRepository.GetFiltersByQuery(query)
 		if err != nil {
 			return nil, err

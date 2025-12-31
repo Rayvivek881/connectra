@@ -25,7 +25,7 @@ type FiltersSvcRepo interface {
 
 func (t *FiltersStruct) GetTempFilters() ([]*ModelFilter, error) {
 	var filters []*ModelFilter
-	err := t.PgDbClient.NewSelect().Model(&filters).Where("direct_drived = false").Scan(context.Background())
+	err := t.PgDbClient.NewSelect().Model(&filters).Where("direct_derived = false").Scan(context.Background())
 	return filters, err
 }
 
@@ -51,3 +51,4 @@ func (t *FiltersStruct) UpdateActiveStatus(key, service string, status bool) err
 		Exec(context.Background())
 	return err
 }
+

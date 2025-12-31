@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"sync"
 	"vivek-ray/connections"
 	"vivek-ray/models"
@@ -44,7 +45,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 		defer wg.Done()
 		if err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()
@@ -53,7 +54,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 		defer wg.Done()
 		if err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()

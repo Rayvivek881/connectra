@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"sync"
 	"vivek-ray/connections"
 	"vivek-ray/constants"
@@ -38,8 +39,8 @@ func (s *CompanyService) GetCompanyByUuids(uuids []string, selectColumns []strin
 }
 
 func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error) {
-	sourcefields := []string{"id"}
-	elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
+	sourceFields := []string{"id"}
+	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
 	esHits, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
 	if err != nil {
 		return nil, err
@@ -72,7 +73,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 		defer wg.Done()
 		if _, err := s.companyPgRepository.BulkUpsert(pgCompanies); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()
@@ -81,7 +82,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 		defer wg.Done()
 		if _, err := s.companyElasticRepository.BulkUpsert(esCompanies); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()
@@ -90,7 +91,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 		defer wg.Done()
 		if err := s.filtersDataRepository.BulkUpsert(filtersData); err != nil {
 			mu.Lock()
-			insertionError = err
+			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
 		}
 	}()

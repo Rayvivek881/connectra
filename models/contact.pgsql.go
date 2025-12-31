@@ -47,7 +47,7 @@ type PgContact struct {
 func PgContactFromRowData(row map[string]string, company *PgCompany) *PgContact {
 	FirstName, LastName := strings.ToLower(row["first_name"]), strings.ToLower(row["last_name"])
 	LinkedinURL := strings.ToLower(row["person_linkedin_url"])
-	server_time := time.Now()
+	serverTime := time.Now()
 
 	ContactUUID := utilities.GenerateUUID5(fmt.Sprintf("%s%s%s", FirstName, LastName, LinkedinURL))
 	return &PgContact{
@@ -74,8 +74,8 @@ func PgContactFromRowData(row map[string]string, company *PgCompany) *PgContact 
 		HomePhone:       utilities.GetCleanedPhoneNumber(row["home_phone"]),
 		OtherPhone:      utilities.GetCleanedPhoneNumber(row["other_phone"]),
 		Stage:           strings.ToLower(row["stage"]),
-		CreatedAt:       &server_time,
-		UpdatedAt:       &server_time,
+		CreatedAt:       &serverTime,
+		UpdatedAt:       &serverTime,
 	}
 }
 

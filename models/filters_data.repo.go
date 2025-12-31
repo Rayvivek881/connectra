@@ -53,3 +53,4 @@ func (t *FiltersDataStruct) BulkUpsert(filtersData []*ModelFilterData) error {
 		Exec(context.Background())
 	return err
 }
+

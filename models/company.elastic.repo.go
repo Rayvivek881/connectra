@@ -9,6 +9,7 @@ import (
 	"vivek-ray/utilities"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/rs/zerolog/log"
 )
 
 type ElasticCompanyStruct struct {
@@ -94,6 +95,7 @@ func (t *ElasticCompanyStruct) BulkUpsert(companies []*ElasticCompany) (int64, e
 			},
 		}
 		if utilities.AddToBuffer(&buf, meta) != nil || utilities.AddToBuffer(&buf, company) != nil {
+			log.Error().Msgf("Failed to add company to buffer: %v", company.Id)
 			continue
 		}
 	}

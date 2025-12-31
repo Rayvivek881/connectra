@@ -10,15 +10,25 @@
 <h3 align="center">High-Performance B2B Data Platform with Hybrid Search Architecture</h3>
 
 <p align="center">
-  <strong>A production-grade backend system demonstrating advanced Go concurrency patterns, custom query language design, distributed systems principles, and enterprise-level architecture for processing millions of records with sub-second latency.</strong>
+  <strong>Production-grade backend demonstrating advanced Go concurrency, custom DSL design, CQRS-inspired architecture, and distributed job processing.</strong>
 </p>
+
+### 🎯 Key Engineering Highlights
+
+| Metric | Implementation |
+|--------|---------------|
+| **Concurrent Writes** | 5 parallel stores (2× PostgreSQL, 2× Elasticsearch, 1× Filters) via goroutines + WaitGroup |
+| **Custom DSL** | VQL (Vivek Query Language) → Elasticsearch bool query compiler with 3 search modes |
+| **Job Processing** | Channel-based worker pool with backpressure, graceful shutdown, and retry mechanism |
+| **Memory Efficiency** | Streaming CSV processing via `io.Pipe()` for multi-GB file import/export |
+| **Connection Pooling** | PostgreSQL (40 max/20 idle), Elasticsearch (custom HTTP transport) |
+| **Rate Limiting** | Token bucket algorithm with `sync.Mutex` + `sync.Once` singleton pattern |
 
 <p align="center">
   <a href="#-architectural-philosophy">Architecture</a> •
   <a href="#-core-engineering-achievements">Achievements</a> •
   <a href="#-advanced-concurrency-implementation">Concurrency</a> •
   <a href="#-custom-query-language-vql---domain-specific-language-design">VQL</a> •
-  <a href="#-system-design-decisions">Design Decisions</a> •
   <a href="#-api-reference">API</a>
 </p>
 
@@ -26,21 +36,19 @@
 
 ## 📋 Table of Contents
 
-- [Architectural Philosophy](#-architectural-philosophy)
-- [Core Engineering Achievements](#-core-engineering-achievements)
-- [Advanced Concurrency Implementation](#-advanced-concurrency-implementation)
-- [Custom Query Language (VQL) - Domain-Specific Language Design](#-custom-query-language-vql---domain-specific-language-design)
-- [Hybrid Database Architecture - The CQRS-Inspired Pattern](#-hybrid-database-architecture---the-cqrs-inspired-pattern)
-- [Distributed Job Processing Engine](#-distributed-job-processing-engine)
-- [Security & Reliability Patterns](#-security--reliability-patterns)
-- [Performance Engineering](#-performance-engineering)
-- [System Design Decisions & Trade-offs](#-system-design-decisions--trade-offs)
-- [Design Patterns & SOLID Principles](#-design-patterns--solid-principles)
-- [Scalability Considerations](#-scalability-considerations)
-- [Error Handling & Resilience](#-error-handling--resilience)
-- [API Reference](#-api-reference)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
+| Section | Topics |
+|---------|--------|
+| [Architectural Philosophy](#-architectural-philosophy) | System design, tech stack justification |
+| [Core Engineering Achievements](#-core-engineering-achievements) | Concurrent writes, worker pools, graceful shutdown |
+| [Concurrency Implementation](#-advanced-concurrency-implementation) | WaitGroup, Mutex, channels, context |
+| [VQL - Custom Query Language](#-custom-query-language-vql---domain-specific-language-design) | DSL design, ES query compilation |
+| [Hybrid Database Architecture](#-hybrid-database-architecture---the-cqrs-inspired-pattern) | CQRS-inspired, two-phase queries |
+| [Job Processing Engine](#-distributed-job-processing-engine) | State machine, streaming, import/export |
+| [Security & Reliability](#-security--reliability-patterns) | Rate limiting, authentication |
+| [Design Patterns](#-design-patterns--solid-principles) | Repository, Factory, Strategy, SOLID |
+| [System Design Trade-offs](#️-system-design-decisions--trade-offs) | Architecture decisions analysis |
+| [API Reference](#-api-reference) | Endpoints documentation |
+| [Getting Started](#-getting-started) | Setup and deployment |
 
 ---
 
@@ -78,13 +86,12 @@
 │   └───────────────────┘   └───────────────────┘   └───────────────────┘         │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ JOB ENGINE      Ticker → Channel(1000) → Worker Pool(N) → Batch Upsert          │
-│                                                                                 │
-│   • Graceful Shutdown (SIGTERM)        • State Machine (OPEN→QUEUE→DONE)        │
-│   • Memory-efficient Streaming         • Thread-safe Error Aggregation          │
-│   • Automatic Retry with Count         • Persistent Queue (PostgreSQL)          │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  JOB ENGINE     Ticker(poll) → Channel(1000) → WorkerPool(N) → BatchUpsert  │
+│                                                                             │
+│    first_time: OPEN → IN_QUEUE → PROCESSING → COMPLETED/FAILED             │
+│    retry:      FAILED → RETRY_IN_QUEUED → PROCESSING → COMPLETED            │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Technology Stack with Engineering Justification
@@ -203,9 +210,8 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 **Solution:** Producer-consumer pattern with buffered channels and graceful shutdown:
 
 ```go
-// s3_file_insertions.go - Production-grade job processing
-func InsertFileJob(ctx context.Context) {
-    insertJob := NewInsertJob()
+// jobs/jobs.go - Production-grade job processing with unified consumer
+func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
     var wg sync.WaitGroup
     jobsChannel := make(chan models.ModelJobs, 1000) // Buffered for backpressure
 
@@ -219,7 +225,7 @@ func InsertFileJob(ctx context.Context) {
     // Spawn configurable number of workers
     for i := 0; i < conf.JobConfig.ParallelJobs; i++ {
         wg.Add(1)
-        go insertJob.Run(&wg, 0, jobsChannel) // Each worker listens on same channel
+        go j.JobConsumer(&wg, ctx, jobsChannel) // Each worker listens on same channel
     }
 
     inQueSize := conf.JobConfig.JobInQueuedSize
@@ -228,7 +234,7 @@ func InsertFileJob(ctx context.Context) {
         case <-ctx.Done(): // Graceful shutdown on SIGTERM/SIGINT
             log.Info().Msg("Context cancelled, stopping job producer...")
             close(jobsChannel) // Signal workers to stop
-            dequeueJobs(jobsChannel, constants.OpenJobStatus, insertJob) // Persist remaining
+            j.DequeueJobs(jobsChannel, constants.OpenJobStatus) // Persist remaining
             return
 
         case <-ticker.C: // Periodic job fetching
@@ -237,10 +243,9 @@ func InsertFileJob(ctx context.Context) {
                 continue
             }
 
-            jobs, err := insertJob.JobsRepository.ListByFilters(models.JobsFilters{
-                JobType: constants.InsertFileJobType,
-                Status:  []string{constants.OpenJobStatus},
-                Limit:   1,
+            jobs, err := j.JobsRepository.ListByFilters(models.JobsFilters{
+                Status: []string{constants.OpenJobStatus},
+                Limit:  1,
             })
 
             if err != nil {
@@ -252,7 +257,7 @@ func InsertFileJob(ctx context.Context) {
             for _, job := range jobs {
                 job.Status = constants.InQueueJobStatus
             }
-            if err = insertJob.JobsRepository.BulkUpsert(jobs); err != nil {
+            if err = j.JobsRepository.BulkUpsert(jobs); err != nil {
                 continue
             }
 
@@ -264,6 +269,33 @@ func InsertFileJob(ctx context.Context) {
         }
     }
 }
+
+// Unified Job Consumer - handles multiple job types
+func (j *JobStruct) JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsChannel chan models.ModelJobs) {
+    defer wg.Done()
+    for job := range jobsChannel {
+        job.Status = constants.ProcessingJobStatus
+        j.JobsRepository.BulkUpsert([]*models.ModelJobs{&job})
+
+        var jobError error
+        switch job.JobType {
+        case constants.InsertCsvFile:    // S3 CSV → Database
+            jobError = ProcessInsertCsvFile(&job)
+        case constants.ExportCsvFile:    // Database → S3 CSV
+            jobError = ProcessExportCsvFile(&job)
+        default:
+            jobError = fmt.Errorf("invalid job type: %s", job.JobType)
+        }
+
+        if jobError != nil {
+            job.Status = constants.FailedJobStatus
+            job.AddRuntimeError(jobError.Error())
+        } else {
+            job.Status = constants.CompletedJobStatus
+        }
+        j.JobsRepository.BulkUpsert([]*models.ModelJobs{&job})
+    }
+}
 ```
 
 **Key Patterns Demonstrated:**
@@ -272,8 +304,9 @@ func InsertFileJob(ctx context.Context) {
 | **Buffered Channel** | `make(chan ModelJobs, 1000)` | Prevents producer blocking |
 | **Backpressure** | `len(jobsChannel) >= inQueSize` | Prevents memory exhaustion |
 | **Select Statement** | `select { case <-ctx.Done(): ... }` | Non-blocking multiplexing |
-| **Graceful Shutdown** | `close(jobsChannel)` + `dequeueJobs()` | No job loss on termination |
+| **Graceful Shutdown** | `close(jobsChannel)` + `DequeueJobs()` | No job loss on termination |
 | **Ticker-based Polling** | `time.NewTicker()` | Controlled database polling |
+| **Strategy Pattern** | `switch job.JobType` | Unified consumer for multiple job types |
 
 ---
 
@@ -353,8 +386,8 @@ func startServer() {
 // contactService.go - Demonstrating advanced concurrent fetch pattern
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
     // Phase 1: Get IDs from Elasticsearch (fast search)
-    sourcefields := []string{"id", "company_id"}
-    elasticQuery := query.ToElasticsearchQuery(false, sourcefields)
+    sourceFields := []string{"id", "company_id"}
+    elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
     elasticContacts, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
     if err != nil {
         return nil, err
@@ -707,12 +740,11 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
                        └───────────────────────┘
 ```
 
-**Why This Works Well:**
-1. **Elasticsearch is fast for search** - optimized inverted index
-2. **PostgreSQL is authoritative** - ACID guarantees for source of truth
-3. **Minimal ES payload** - only fetch IDs, reduces network I/O
-4. **Parallel fetch** - company data fetched concurrently
-5. **In-memory join** - O(n) with hash map, no complex SQL JOIN
+**Why This Pattern:**
+- **ES for search** → Optimized inverted index, sub-ms latency
+- **Minimal ES payload** → Only fetch IDs, reduces network I/O by ~95%
+- **Parallel PostgreSQL fetch** → Contacts + Companies fetched concurrently
+- **Hash map join** → O(n) complexity vs O(n²) nested loops
 
 ---
 
@@ -755,15 +787,16 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 
 ### Memory-Efficient Streaming CSV Processing
 
-**Problem:** Process multi-GB CSV files from S3 without loading into memory.
+**Problem:** Process multi-GB CSV files from S3 without loading into memory, and export large datasets to S3.
 
-**Solution:** Streaming reader with batch processing:
+**Solution:** Streaming reader/writer with batch processing for both import and export:
 
 ```go
-// s3_file_insertions.go - Memory-efficient file processing
-func (i *InsertJobStruct) processCSV(reader io.Reader) error {
-    csvReader := csv.NewReader(reader) // Streaming reader, not buffered!
-
+// jobs/s3_files.go - Memory-efficient CSV import
+func InsertCsvToDb(fileStream *io.ReadCloser) error {
+    csvReader := csv.NewReader(*fileStream) // Streaming reader, not buffered!
+    batchUpsertService := commonService.NewBatchUpsertService()
+    
     headers, err := csvReader.Read()
     if err != nil {
         return err
@@ -781,11 +814,11 @@ func (i *InsertJobStruct) processCSV(reader io.Reader) error {
             return err
         }
 
-        batch = append(batch, rowToMap(headers, row))
+        batch = append(batch, utilities.CsvRowToMap(headers, row))
         
         // Process in batches to control memory
         if len(batch) >= batchSize {
-            if err := i.BatchUpsertService.ProcessBatchUpsert(batch); err != nil {
+            if err := batchUpsertService.ProcessBatchUpsert(batch); err != nil {
                 return err
             }
             batch = batch[:0]  // REUSE slice memory (no allocation!)
@@ -794,9 +827,25 @@ func (i *InsertJobStruct) processCSV(reader io.Reader) error {
 
     // Process remaining records
     if len(batch) > 0 {
-        return i.BatchUpsertService.ProcessBatchUpsert(batch)
+        return batchUpsertService.ProcessBatchUpsert(batch)
     }
     return nil
+}
+
+// Memory-efficient CSV export using io.Pipe for streaming to S3
+func ProcessExportCsvFile(job *models.ModelJobs) error {
+    var jobData utilities.ExportFileJobData
+    json.Unmarshal(job.Data, &jobData)
+
+    reader, writer := io.Pipe()  // Connect export stream directly to S3 upload
+    
+    go func() {
+        defer writer.Close()
+        ExportCsvToStream(writer, jobData)  // Stream data row by row
+    }()
+
+    s3Key := fmt.Sprintf("%s/%s.csv", conf.S3StorageConfig.S3UploadFilePath, job.UUID)
+    return connections.S3Connection.WriteFileStream(context.Background(), jobData.FileS3Bucket, s3Key, reader)
 }
 ```
 
@@ -804,9 +853,10 @@ func (i *InsertJobStruct) processCSV(reader io.Reader) error {
 | Technique | Implementation | Benefit |
 |-----------|---------------|---------|
 | **Streaming from S3** | `connections.S3Connection.ReadFileStream()` | Never loads full file |
+| **Streaming to S3** | `io.Pipe()` + `WriteFileStream()` | Export without buffering |
 | **Batch processing** | `batchSize` chunks | Bounded memory usage |
 | **Slice reuse** | `batch = batch[:0]` | Zero allocations per batch |
-| **Defer close** | `defer fileStream.Close()` | Proper resource cleanup |
+| **Cursor pagination** | `vql.Cursor` for export | Efficient large dataset iteration |
 
 ---
 
@@ -1062,54 +1112,49 @@ type ContactService struct {
 
 ---
 
+## ⚖️ System Design Decisions & Trade-offs
+
+| Decision | Trade-off | Why This Choice |
+|----------|-----------|-----------------|
+| **Hybrid DB (PostgreSQL + Elasticsearch)** | Increased complexity, eventual consistency | PostgreSQL for ACID source-of-truth, Elasticsearch for sub-ms full-text search |
+| **Two-phase query (ES IDs → PG data)** | Extra round-trip latency | Minimal ES payload (~95% reduction), rich PostgreSQL data with field projection |
+| **Channel-based job queue** | In-memory (lost on crash) | PostgreSQL persists job state; channel is just distribution layer |
+| **Buffered channels (1000)** | Memory usage vs throughput | Backpressure prevents OOM; configurable via env |
+| **sync.Mutex over sync.RWMutex** | Slightly lower read concurrency | Simpler, sufficient for rate limiter's short critical sections |
+| **UUID5 (SHA1-based)** | Collision risk (negligible) | Deterministic IDs enable idempotent upserts, natural deduplication |
+| **Bun ORM over raw SQL** | Slight overhead | Type-safe queries, cleaner code, maintains readability |
+| **Streaming CSV (io.Pipe)** | Complexity vs memory | Multi-GB file processing without loading into memory |
+
+---
+
 ## 📈 Scalability Considerations
 
 ### Horizontal Scaling Strategy
 
 ```
-                              HORIZONTAL SCALING ARCHITECTURE
-    ═══════════════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         LOAD BALANCER (nginx / ALB)                         │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+   ┌───────────┐           ┌───────────┐           ┌───────────┐
+   │  API-1    │           │  API-2    │           │  API-N    │  ← Stateless
+   │  :8000    │           │  :8000    │           │  :8000    │    instances
+   └───────────┘           └───────────┘           └───────────┘
 
-                              ┌─────────────────────┐
-                              │    LOAD BALANCER    │
-                              │    (nginx / ALB)    │
-                              └──────────┬──────────┘
-                                         │
-                   ┌─────────────────────┼─────────────────────┐
-                   │                     │                     │
-                   ▼                     ▼                     ▼
-            ┌────────────┐        ┌────────────┐        ┌────────────┐
-            │   API-1    │        │   API-2    │        │   API-N    │
-            │   :8000    │        │   :8000    │        │   :8000    │
-            │ (Stateless)│        │ (Stateless)│        │ (Stateless)│
-            └────────────┘        └────────────┘        └────────────┘
+   ┌───────────┐  ┌───────────┐  ┌───────────┐     ┌───────────┐
+   │ JOB-FT-1  │  │ JOB-FT-2  │  │ JOB-FT-N  │     │ JOB-RETRY │  ← Single
+   │ worker=4  │  │ worker=4  │  │ worker=4  │     │ worker=1  │    retry runner
+   └─────┬─────┘  └─────┬─────┘  └─────┬─────┘     └───────────┘
+         └──────────────┼──────────────┘
+                        ▼
+        Jobs pulled with status lock (IN_QUEUE prevents double-processing)
 
-    ───────────────────────────────────────────────────────────────────────────
-
-            ┌────────────┐        ┌────────────┐        ┌────────────┐
-            │   JOB-1    │        │   JOB-2    │        │   JOB-N    │
-            │  worker=4  │        │  worker=4  │        │  worker=4  │
-            │ (Stateless)│        │ (Stateless)│        │ (Stateless)│
-            └────────────┘        └────────────┘        └────────────┘
-                   │                     │                     │
-                   └─────────────────────┴─────────────────────┘
-                                         │
-                        Jobs pulled from DB with status lock
-                        (IN_QUEUE prevents double-processing)
-
-    ═══════════════════════════════════════════════════════════════════════════
-                                   DATA STORES
-    ───────────────────────────────────────────────────────────────────────────
-
-        ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-        │    POSTGRESQL    │  │  ELASTICSEARCH   │  │      AWS S3      │
-        │   (Primary +     │  │   (3-node        │  │    (Managed)     │
-        │    Replicas)     │  │    cluster)      │  │                  │
-        │                  │  │                  │  │                  │
-        │ • Read replicas  │  │ • 6 shards       │  │ • Infinite scale │
-        │ • Pool: 40 conn  │  │ • 1 replica each │  │ • Presigned URLs │
-        │ • ACID           │  │ • Horizontal     │  │ • Streaming      │
-        └──────────────────┘  └──────────────────┘  └──────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  PostgreSQL (Primary+Replicas)  │  Elasticsearch (6 shards)  │  AWS S3     │
+│  Pool: 40 max, 20 idle          │  Horizontal scaling        │  Streaming  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Performance Characteristics
@@ -1119,8 +1164,11 @@ type ContactService struct {
 | **Concurrent DB Connections** | 40 max, 20 idle | `SetMaxOpenConns(40)` |
 | **ES Connection Pool** | 20 idle, 5 per host | Custom HTTP transport |
 | **Job Queue Capacity** | 1000 jobs | Buffered channel |
-| **Parallel Workers** | Configurable (default 4) | `PARALLEL_JOBS` env |
+| **First-time Workers** | Configurable (default 4) | `PARALLEL_JOBS` env |
+| **Retry Workers** | 1 (single worker) | Hardcoded for controlled retries |
 | **Batch Size** | Configurable (default 500) | `BATCH_SIZE_FOR_INSERTION` |
+| **First-time Poll Interval** | Configurable seconds | `TICKER_INTERVAL` env |
+| **Retry Poll Interval** | Configurable minutes | `TICKER_INTERVAL` env |
 | **Rate Limit** | Configurable req/min | Token bucket algorithm |
 | **ES Shards** | 6 primary, 1 replica | Index settings |
 
@@ -1171,31 +1219,58 @@ func ValidateElasticPagination(page, limit int) error {
 ### Job Retry Mechanism
 
 ```go
-// Separate retry worker for failed jobs
-func RetryInsertFileJob(ctx context.Context) {
-    insertJob := NewInsertJob()
+// jobs/jobs.go - Separate retry runner for failed jobs
+func (j *JobStruct) RetryJobs(ctx context.Context, args []string) {
+    var wg sync.WaitGroup
     jobsChannel := make(chan models.ModelJobs, 1000)
-    
-    wg.Add(1)
-    go insertJob.Run(&wg, 1, jobsChannel)  // retry=1 decrements retry_count
 
+    wg.Add(1)
+    go j.JobConsumer(&wg, ctx, jobsChannel)  // Single worker for retries
+
+    // Retry uses MINUTES interval (longer than first_time's SECONDS)
     ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
-    
+    defer func() {
+        ticker.Stop()
+        wg.Wait()
+        log.Info().Msg("All workers stopped")
+    }()
+
     for {
         select {
         case <-ctx.Done():
+            log.Info().Msg("Context cancelled, stopping retry job producer...")
             close(jobsChannel)
-            dequeueJobs(jobsChannel, constants.FailedJobStatus, insertJob)
+            j.DequeueJobs(jobsChannel, constants.FailedJobStatus)
             return
         case <-ticker.C:
-            jobs, _ := insertJob.JobsRepository.ListByFilters(models.JobsFilters{
-                JobType:  constants.InsertFileJobType,
-                Retrying: true,  // Only jobs with retry_count > 0
+            jobs, _ := j.JobsRepository.ListByFilters(models.JobsFilters{
+                Retrying: true,  // Only jobs with run_after passed
                 Status:   []string{constants.FailedJobStatus},
                 Limit:    1,
             })
-            // ... process retry jobs ...
+            
+            for _, job := range jobs {
+                job.Status = constants.RetryInQueuedJobStatus
+            }
+            j.JobsRepository.BulkUpsert(jobs)
+
+            for _, job := range jobs {
+                jobsChannel <- *job
+            }
         }
+    }
+}
+
+// Job Runner Dispatcher - selects runner mode based on argument
+func RunJobs(ctx context.Context, args []string) {
+    jobService := NewJobService()
+    jobType := args[0]
+
+    switch jobType {
+    case constants.FirstTimeJobType:  // "first_time"
+        jobService.FirstTimeJob(ctx, args[1:])
+    case constants.RetryJobType:      // "retry"
+        jobService.RetryJobs(ctx, args[1:])
     }
 }
 ```
@@ -1246,7 +1321,7 @@ connectra/
 ├── cmd/                              # CLI commands (Cobra)
 │   ├── root.go                       # Root command with graceful shutdown
 │   ├── server.go                     # API server command
-│   └── s3_file_insertions.go         # Background job runner
+│   └── jobs.go                       # Background job runner (first_time/retry)
 │
 ├── conf/                             # Configuration management
 │   └── viper.go                      # Viper-based env config with reflection
@@ -1275,12 +1350,12 @@ connectra/
 │   ├── company.pgsql.repo.go         # Company repository
 │   ├── company.elastic.go            # Elasticsearch company model
 │   ├── company.elastic.repo.go       # Elasticsearch company repository
-│   ├── jobs.go                       # Job model with state machine
-│   ├── jobs.repo.go                  # Job repository with deduplication
+│   ├── jobs.go                       # Job model (JSONB data, retry logic)
+│   ├── jobs.repo.go                  # Job repository
 │   ├── filters.go                    # Filter configuration model
-│   ├── filters.repository.go         # Filters repository
+│   ├── filters.repo.go               # Filters repository
 │   ├── filters_data.go               # Filter data model
-│   └── filters_data.repository.go    # Filter data repository
+│   └── filters_data.repo.go          # Filter data repository
 │
 ├── modules/                          # Feature modules (Clean Architecture)
 │   ├── contacts/
@@ -1300,7 +1375,7 @@ connectra/
 │   │   │   └── companyService.go
 │   │   ├── helper/
 │   │   │   ├── requests.go
-│   │   │   └── response.go
+│   │   │   └── responses.go
 │   │   └── routes.go
 │   │
 │   └── common/
@@ -1319,8 +1394,8 @@ connectra/
 │       └── routes.go
 │
 ├── jobs/                             # Background job workers
-│   ├── s3_file_insertions.go         # Worker pool with channel-based queue
-│   └── insert_direct_file.go         # Direct file insertion
+│   ├── jobs.go                       # Job service, consumer, and runner logic
+│   └── s3_files.go                   # CSV import/export processing functions
 │
 ├── utilities/                        # Shared utilities
 │   ├── query.go                      # VQL to Elasticsearch converter
@@ -1328,15 +1403,16 @@ connectra/
 │   └── common.go                     # Helper functions (UUID5, reflection)
 │
 ├── constants/                        # Application constants
-│   ├── elastic_serach.go             # ES index names, search types
+│   ├── elastic_search.go             # ES index names, search types
 │   ├── errors_message.go             # Typed error definitions
 │   ├── jobs.go                       # Job states and types
 │   └── services.go                   # Service identifiers
 │
-├── examples/                         # Example configurations
+├── examples/                         # Example configurations & docs
 │   ├── company_index_create.json     # Elasticsearch company index mapping
 │   ├── contact_index_create.json     # Elasticsearch contact index mapping
-│   └── nql_query_input.json          # Example VQL query
+│   ├── vql_query_input.json          # Example VQL query
+│   └── docker_creation.txt           # Docker setup notes
 │
 ├── Dockerfile                        # Multi-stage build (alpine)
 ├── go.mod                            # Go modules
@@ -1392,11 +1468,10 @@ S3_SSL=true
 S3_UPLOAD_FILE_PATH_PREFIX=uploads
 
 # Jobs Configuration
-PARALLEL_JOBS=4
-BATCH_SIZE_FOR_INSERTION=500
-TICKER_INTERVAL_MINUTES=5
-JOB_IN_QUEUE_SIZE=100
-JOB_TYPE=normal
+PARALLEL_JOBS=4                    # Number of concurrent workers (first_time mode)
+BATCH_SIZE_FOR_INSERTION=500       # Records per batch for CSV processing
+TICKER_INTERVAL=5                  # Seconds (first_time) / Minutes (retry) between polls
+JOB_IN_QUEUE_SIZE=100              # Max jobs in channel before backpressure
 ```
 
 ### Running Locally
@@ -1415,8 +1490,11 @@ cp .env.example .env
 # Run the API server
 go run main.go api-server
 
-# Or run the background job processor
-go run main.go s3-job
+# Run the first-time job processor (processes new jobs)
+go run main.go jobs first_time
+
+# Run the retry job processor (reprocesses failed jobs)
+go run main.go jobs retry
 ```
 
 ### Docker Deployment
@@ -1433,11 +1511,18 @@ docker run -d \
   --name connectra-api \
   connectra:latest
 
-# Run job processor
+# Run first-time job processor
 docker run -d \
   --env-file .env \
-  -e RUN_COMMAND=s3-job \
+  -e RUN_COMMAND="jobs first_time" \
   --name connectra-jobs \
+  connectra:latest
+
+# Run retry job processor
+docker run -d \
+  --env-file .env \
+  -e RUN_COMMAND="jobs retry" \
+  --name connectra-jobs-retry \
   connectra:latest
 ```
 
@@ -1457,22 +1542,25 @@ curl -X PUT "localhost:9200/companies_index" \
 
 ---
 
-## 🤝 Contributing
+## 💡 Skills Demonstrated
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+| Category | Skills |
+|----------|--------|
+| **Go Expertise** | Goroutines, channels, sync primitives (WaitGroup, Mutex, Once), context propagation |
+| **System Design** | CQRS-inspired hybrid architecture, distributed job processing, horizontal scaling |
+| **Database** | PostgreSQL optimization (connection pooling, UPSERT), Elasticsearch (bool queries, N-gram) |
+| **API Design** | RESTful patterns, custom DSL (VQL), middleware chains, rate limiting |
+| **DevOps** | Docker multi-stage builds, graceful shutdown (SIGTERM), environment configuration |
+| **Patterns** | Repository, Factory, Strategy, Singleton, Worker Pool, Producer-Consumer |
 
 ---
 
 ## 📄 License
 
-MIT License - feel free to use this project as a reference or starting point.
+MIT License
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ in Go | Designed for scalability, built for production</sub>
-</p>
-
-<p align="center">
-  <strong>Demonstrates: System Design • Concurrency • Clean Architecture • API Design • Database Optimization</strong>
+  <strong>Go • Elasticsearch • PostgreSQL • AWS S3 • Docker • Clean Architecture</strong>
 </p>
