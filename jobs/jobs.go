@@ -86,7 +86,7 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 	var wg sync.WaitGroup
 	jobsChannel := make(chan models.ModelJobs, 1000)
 
-	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
 	defer func() {
 		ticker.Stop()
 		wg.Wait()
