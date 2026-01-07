@@ -1,0 +1,167 @@
+{
+  "settings": {
+    "number_of_shards": 6,
+    "number_of_replicas": 1,
+    "index": {
+      "codec": "best_compression",
+      "max_ngram_diff": 6,
+      "analysis": {
+        "analyzer": {
+          "ngram_analyzer": {
+            "tokenizer": "standard",
+            "filter": [
+              "lowercase",
+              "ngram_filter"
+            ]
+          }
+        },
+        "filter": {
+          "ngram_filter": {
+            "type": "ngram",
+            "min_gram": 5,
+            "max_gram": 10
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "city": {
+        "type": "keyword"
+      },
+      "company_address": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "company_annual_revenue": {
+        "type": "long"
+      },
+      "company_city": {
+        "type": "keyword"
+      },
+      "company_country": {
+        "type": "keyword"
+      },
+      "company_employees_count": {
+        "type": "long"
+      },
+      "company_id": {
+        "type": "keyword"
+      },
+      "company_industries": {
+        "type": "keyword"
+      },
+      "company_keywords": {
+        "type": "keyword"
+      },
+      "company_linkedin_url": {
+        "type": "keyword"
+      },
+      "company_name": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        }
+      },
+      "company_normalized_domain": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "company_state": {
+        "type": "keyword"
+      },
+      "company_technologies": {
+        "type": "keyword"
+      },
+      "company_total_funding": {
+        "type": "long"
+      },
+      "company_website": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "country": {
+        "type": "keyword"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "departments": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "email_status": {
+        "type": "keyword"
+      },
+      "first_name": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "uuid": {
+        "type": "keyword"
+      },
+      "last_name": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "linkedin_url": {
+        "type": "keyword"
+      },
+      "mobile_phone": {
+        "type": "keyword"
+      },
+      "seniority": {
+        "type": "keyword"
+      },
+      "state": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      }
+    }
+  }
+}

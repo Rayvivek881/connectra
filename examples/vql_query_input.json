@@ -1,0 +1,107 @@
+{
+  "where": {
+    "text_matches": {
+      "must": [
+        {
+          "text_value": "software engineer",
+          "filter_key": "job_title",
+          "search_type": "exact",
+          "slop": 3
+        },
+        {
+          "text_value": "machine learning AI",
+          "filter_key": "skills",
+          "search_type": "shuffle",
+          "fuzzy": true
+        },
+        {
+          "text_value": "Python developer",
+          "filter_key": "job_title",
+          "search_type": "exact",
+          "slop": 1
+        },
+        {
+          "text_value": "backend systems",
+          "filter_key": "experience",
+          "search_type": "shuffle",
+          "fuzzy": false
+        }
+      ],
+      "must_not": [
+        {
+          "text_value": "intern trainee",
+          "filter_key": "job_title",
+          "search_type": "shuffle",
+          "fuzzy": true
+        },
+        {
+          "text_value": "freelance contractor",
+          "filter_key": "employment_type",
+          "search_type": "exact",
+          "slop": 0
+        },
+        {
+          "text_value": "remote only",
+          "filter_key": "work_preference",
+          "search_type": "shuffle",
+          "fuzzy": false
+        }
+      ]
+    },
+    "keyword_match": {
+      "must": {
+        "country": ["USA", "Canada", "UK", "Germany", "Australia"],
+        "department": ["Engineering", "Research", "Data Science"],
+        "is_verified": true,
+        "account_status": "active",
+        "subscription_tier": ["premium", "enterprise"],
+        "company_size": ["51-200", "201-500", "501-1000", "1000+"]
+      },
+      "must_not": {
+        "blacklisted": true,
+        "spam_flag": true,
+        "unsubscribed": true,
+        "bounced_email": true,
+        "competitor_company": ["CompetitorA", "CompetitorB", "CompetitorC"]
+      }
+    },
+    "range_query": {
+      "must": {
+        "created_at": {
+          "gte": "2023-01-01T00:00:00Z",
+          "lte": "2024-12-31T23:59:59Z"
+        },
+        "last_activity_date": {
+          "gte": "2024-06-01"
+        },
+        "years_of_experience": {
+          "gte": 3,
+          "lte": 15
+        },
+        "annual_revenue": {
+          "gte": 1000000,
+          "lte": 50000000
+        },
+        "employee_count": {
+          "gte": 50
+        },
+        "email_open_rate": {
+          "gte": 0.25
+        },
+        "lead_score": {
+          "gte": 70,
+          "lte": 100
+        }
+      }
+    }
+  },
+  "order_by": [
+    { "order_by": "lead_score", "order_direction": "desc" },
+    { "order_by": "last_activity_date", "order_direction": "desc" },
+    { "order_by": "company_name.keyword", "order_direction": "asc" },
+    { "order_by": "created_at", "order_direction": "asc" }
+  ],
+  "search_after": ["85", "2024-11-15T10:30:00Z", "Acme Corp", "2024-01-15T08:00:00Z"],
+  "limit": 25
+}
+

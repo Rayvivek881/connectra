@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Connectra API Lambda Function - High-Performance B2B Data Platform
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: provided.al2023
+    Environment:
+      Variables:
+        APP_ENV: production
+        LAMBDA_MODE: "true"
+        MAX_REQUESTS_PER_MINUTE: "180"
+        MEMORY_LOG_INTERVAL_SECONDS: "900"
+        PG_DB_DEBUG: "false"
+        PG_DB_SSL: "false"
+        ELASTICSEARCH_DEBUG: "false"
+        ELASTICSEARCH_SSL: "false"
+        ELASTICSEARCH_AUTH: "true"
+        S3_SSL: "true"
+        S3_DEBUG: "false"
+        S3_UPLOAD_URL_TTL_HOURS: "24"
+        S3_UPLOAD_FILE_PATH_PRIFIX: "connectra/"
+        JOB_IN_QUEUE_SIZE: "100"
+        PARALLEL_JOBS: "2"
+        TICKER_INTERVAL_MINUTES: "1"
+        BATCH_SIZE_FOR_INSERTION: "100"
+        JOB_TYPE: "normal"
+
+Parameters:
+  ApiKey:
+    Type: String
+    Description: API key for service authentication
+    NoEcho: true
+  
+  # PostgreSQL Database Configuration
+  PgDbConnection:
+    Type: String
+    Description: PostgreSQL connection string (postgres://user:pass@host:port/db)
+    NoEcho: true
+    Default: ""
+  
+  PgDbHost:
+    Type: String
+    Description: PostgreSQL host (if not using connection string)
+    Default: ""
+  
+  PgDbPort:
+    Type: String
+    Description: PostgreSQL port
+    Default: "5432"
+  
+  PgDbDatabase:
+    Type: String
+    Description: PostgreSQL database name
+    Default: ""
+  
+  PgDbUsername:
+    Type: String
+    Description: PostgreSQL username
+    Default: ""
+  
+  PgDbPassword:
+    Type: String
+    Description: PostgreSQL password
+    NoEcho: true
+    Default: ""
+  
+  # Elasticsearch Configuration
+  ElasticsearchConnection:
+    Type: String
+    Description: Elasticsearch connection string (http://host:port)
+    Default: ""
+  
+  ElasticsearchHost:
+    Type: String
+    Description: Elasticsearch host (if not using connection string)
+    Default: ""
+  
+  ElasticsearchPort:
+    Type: String
+    Description: Elasticsearch port
+    Default: "9200"
+  
+  ElasticsearchUsername:
+    Type: String
+    Description: Elasticsearch username
+    Default: "elastic"
+  
+  ElasticsearchPassword:
+    Type: String
+    Description: Elasticsearch password
+    NoEcho: true
+    Default: ""
+  
+  # AWS S3 Configuration
+  S3AccessKey:
+    Type: String
+    Description: AWS S3 Access Key ID
+    NoEcho: true
+    Default: ""
+  
+  S3SecretKey:
+    Type: String
+    Description: AWS S3 Secret Access Key
+    NoEcho: true
+    Default: ""
+  
+  S3Region:
+    Type: String
+    Description: AWS S3 Region
+    Default: "us-east-1"
+  
+  S3Bucket:
+    Type: String
+    Description: AWS S3 Bucket name
+    MinLength: 1
+  
+  S3Endpoint:
+    Type: String
+    Description: Custom S3 endpoint (leave empty for AWS S3)
+    Default: ""
+
+Resources:
+  ConnectraApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+      GoBuildFlags: '-ldflags="-s -w"'
+    Properties:
+      FunctionName: connectra-api
+      CodeUri: cmd/lambda
+      Handler: bootstrap
+      Description: Connectra API Service - High-Performance B2B Data Platform
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          API_KEY: !Ref ApiKey
+          # PostgreSQL Configuration
+          PG_DB_CONNECTION: !Ref PgDbConnection
+          PG_DB_HOST: !Ref PgDbHost
+          PG_DB_PORT: !Ref PgDbPort
+          PG_DB_DATABASE: !Ref PgDbDatabase
+          PG_DB_USERNAME: !Ref PgDbUsername
+          PG_DB_PASSWORD: !Ref PgDbPassword
+          # Elasticsearch Configuration
+          ELASTICSEARCH_CONNECTION: !Ref ElasticsearchConnection
+          ELASTICSEARCH_HOST: !Ref ElasticsearchHost
+          ELASTICSEARCH_PORT: !Ref ElasticsearchPort
+          ELASTICSEARCH_USERNAME: !Ref ElasticsearchUsername
+          ELASTICSEARCH_PASSWORD: !Ref ElasticsearchPassword
+          # S3 Configuration
+          S3_ACCESS_KEY: !Ref S3AccessKey
+          S3_SECRET_KEY: !Ref S3SecretKey
+          S3_REGION: !Ref S3Region
+          S3_BUCKET: !Ref S3Bucket
+          S3_ENDPOINT: !Ref S3Endpoint
+      Events:
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+              Resource:
+                - !Sub 'arn:aws:s3:::${S3Bucket}'
+                - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+      Tags:
+        Service: connectra-api
+        Environment: production
+        ManagedBy: SAM
+
+Outputs:
+  ConnectraApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !GetAtt ServerlessHttpApi.ApiEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+  
+  ConnectraApiId:
+    Description: "API Gateway HTTP API ID"
+    Value: !Ref ServerlessHttpApi
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiId"
+  
+  ConnectraApiFunctionArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt ConnectraApiFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionArn"
+  
+  ConnectraApiFunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref ConnectraApiFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionName"

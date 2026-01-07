@@ -1,0 +1,108 @@
+{
+  "settings": {
+    "number_of_shards": 6,
+    "number_of_replicas": 1,
+    "index": {
+      "codec": "best_compression",
+      "max_ngram_diff": 6,
+      "analysis": {
+        "analyzer": {
+          "ngram_analyzer": {
+            "tokenizer": "standard",
+            "filter": [
+              "lowercase",
+              "ngram_filter"
+            ]
+          }
+        },
+        "filter": {
+          "ngram_filter": {
+            "type": "ngram",
+            "min_gram": 5,
+            "max_gram": 10
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "address": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "annual_revenue": {
+        "type": "long"
+      },
+      "city": {
+        "type": "keyword"
+      },
+      "country": {
+        "type": "keyword"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "employees_count": {
+        "type": "long"
+      },
+      "uuid": {
+        "type": "keyword"
+      },
+      "industries": {
+        "type": "keyword"
+      },
+      "keywords": {
+        "type": "keyword"
+      },
+      "linkedin_url": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "normalized_domain": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      },
+      "state": {
+        "type": "keyword"
+      },
+      "technologies": {
+        "type": "keyword"
+      },
+      "total_funding": {
+        "type": "long"
+      },
+      "website": {
+        "type": "text",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "ngram_analyzer"
+          }
+        },
+        "analyzer": "standard"
+      }
+    }
+  }
+}
