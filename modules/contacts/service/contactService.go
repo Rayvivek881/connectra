@@ -31,7 +31,7 @@ func NewContactService(tempFilters []*models.ModelFilter) ContactSvcRepo {
 type ContactSvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
-	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error
+	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]*models.PgContact, error)
 	BulkUpsertToDb(pgContacts []*models.PgContact, esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error
 }
 
@@ -156,7 +156,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 	return insertionError
 }
 
-func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error {
+func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]*models.PgContact, error) {
 	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
 
 	for _, contact := range pgContacts {
@@ -184,5 +184,5 @@ func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts [
 			}
 		}
 	}
-	return s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
+	return pgContacts, s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
 }

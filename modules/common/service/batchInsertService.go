@@ -13,7 +13,7 @@ import (
 )
 
 type BatchUpsertSvc interface {
-	ProcessBatchUpsert(batch []map[string]string) error
+	ProcessBatchUpsert(batch []map[string]string) ([]*models.PgCompany, []*models.PgContact, error)
 }
 
 type batchUpsertService struct {
@@ -43,7 +43,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 
 	go func() {
 		defer wg.Done()
-		if err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
+		if _, err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -52,7 +52,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 
 	go func() {
 		defer wg.Done()
-		if err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
+		if _, err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -63,7 +63,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 	return insertionError
 }
 
-func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error {
+func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]*models.PgCompany, []*models.PgContact, error) {
 	cleanedBatch := make([]map[string]string, 0, len(batch))
 	for _, row := range batch {
 		cleanedRow := make(map[string]string)
@@ -97,5 +97,5 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error
 			esContacts = append(esContacts, elasticContact)
 		}
 	}
-	return s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
+	return pgCompanies, pgContacts, s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
 }

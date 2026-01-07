@@ -19,13 +19,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func InsertCsvToDb(fileStream *io.ReadCloser) error {
+func InsertCsvToDb(fileStream *io.ReadCloser) (int, error) {
 	csvReader, batchUpsertService := csv.NewReader(*fileStream), commonService.NewBatchUpsertService()
 	headers, err := csvReader.Read()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	batchSize := conf.JobConfig.BatchSize
+	batchSize, totalInserted := conf.JobConfig.BatchSize, 0
 	batch := make([]map[string]string, 0, batchSize)
 
 	for {
@@ -34,20 +34,23 @@ func InsertCsvToDb(fileStream *io.ReadCloser) error {
 			break
 		}
 		if err != nil {
-			return err
+			return totalInserted, err
 		}
 		batch = append(batch, utilities.CsvRowToMap(headers, row))
 		if len(batch) >= batchSize {
-			if err := batchUpsertService.ProcessBatchUpsert(batch); err != nil {
-				return err
+			if _, _, err := batchUpsertService.ProcessBatchUpsert(batch); err != nil {
+				return totalInserted, err
 			}
-			batch = batch[:0]
+			batch, totalInserted = batch[:0], totalInserted+len(batch)
 		}
 	}
 	if len(batch) > 0 {
-		return batchUpsertService.ProcessBatchUpsert(batch)
+		if _, _, err := batchUpsertService.ProcessBatchUpsert(batch); err != nil {
+			return totalInserted, err
+		}
+		totalInserted += len(batch)
 	}
-	return nil
+	return totalInserted, nil
 }
 
 func ProcessInsertCsvFile(job *models.ModelJobs) error {
@@ -67,7 +70,9 @@ func ProcessInsertCsvFile(job *models.ModelJobs) error {
 		return err
 	}
 	defer fileStream.Close()
-	return InsertCsvToDb(&fileStream)
+	count, err := InsertCsvToDb(&fileStream)
+	job.AddMessage(fmt.Sprintf("%d count of data inserted", count))
+	return err
 }
 
 func ExportContactsCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) error {
@@ -172,5 +177,6 @@ func ProcessExportCsvFile(job *models.ModelJobs) error {
 	}
 
 	job.AddS3Key(s3Key)
+	job.AddMessage(fmt.Sprintln("Export is Successfull pls download from s3"))
 	return nil
 }

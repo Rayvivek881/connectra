@@ -29,7 +29,7 @@ func NewCompanyService(tempFilters []*models.ModelFilter) CompanySvcRepo {
 type CompanySvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
-	BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) error
+	BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) ([]*models.PgCompany, error)
 	BulkUpsertToDb(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany, filtersData []*models.ModelFilterData) error
 	GetCompanyByUuids(uuids []string, selectColumns []string) ([]*models.PgCompany, error)
 }
@@ -100,7 +100,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 	return insertionError
 }
 
-func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) error {
+func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) ([]*models.PgCompany, error) {
 	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
 
 	for _, company := range pgCompanies {
@@ -123,5 +123,5 @@ func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, esCompanies
 			})
 		}
 	}
-	return s.BulkUpsertToDb(pgCompanies, esCompanies, filtersData)
+	return pgCompanies, s.BulkUpsertToDb(pgCompanies, esCompanies, filtersData)
 }
