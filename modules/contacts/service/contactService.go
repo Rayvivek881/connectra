@@ -31,7 +31,7 @@ func NewContactService(tempFilters []*models.ModelFilter) ContactSvcRepo {
 type ContactSvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
-	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]*models.PgContact, error)
+	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]string, error)
 	BulkUpsertToDb(pgContacts []*models.PgContact, esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error
 }
 
@@ -156,10 +156,12 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 	return insertionError
 }
 
-func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]*models.PgContact, error) {
+func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) ([]string, error) {
 	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
+	uuids := make([]string, 0, len(pgContacts))
 
 	for _, contact := range pgContacts {
+		uuids = append(uuids, contact.UUID)
 		for _, filter := range s.tempFilters {
 			if filter.Service != constants.ContactsService {
 				continue
@@ -184,5 +186,5 @@ func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts [
 			}
 		}
 	}
-	return pgContacts, s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
+	return uuids, s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
 }

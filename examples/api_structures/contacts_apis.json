@@ -1,0 +1,427 @@
+{
+  "service": "Contacts",
+  "base_path": "http://localhost:8000/contacts",
+  "apis": [
+    {
+      "name": "Get Contacts By Filter",
+      "endpoint": "/",
+      "method": "POST",
+      "description": "Search and filter contacts using VQL. Supports text matching, keyword matching, range queries, pagination, sorting, and company population.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body_basic": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "country": ["united states"],
+                "seniority": ["senior", "manager", "director"]
+              }
+            }
+          },
+          "limit": 25,
+          "page": 1
+        },
+        "body_with_text_search": {
+          "where": {
+            "text_matches": {
+              "must": [
+                {
+                  "text_value": "software engineer",
+                  "filter_key": "title",
+                  "search_type": "match_phrase",
+                  "slop": 1
+                }
+              ],
+              "must_not": [
+                {
+                  "text_value": "intern",
+                  "filter_key": "title",
+                  "search_type": "match"
+                }
+              ]
+            },
+            "keyword_match": {
+              "must": {
+                "country": ["united states", "canada"],
+                "departments": ["engineering", "product"]
+              },
+              "must_not": {
+                "email_status": ["invalid", "bounced"]
+              }
+            }
+          },
+          "order_by": [
+            {
+              "order_by": "seniority",
+              "order_direction": "asc"
+            },
+            {
+              "order_by": "first_name",
+              "order_direction": "asc"
+            }
+          ],
+          "select_columns": [
+            "uuid",
+            "first_name",
+            "last_name",
+            "email",
+            "title",
+            "departments",
+            "seniority",
+            "company_id",
+            "linkedin_url",
+            "mobile_phone"
+          ],
+          "limit": 50
+        },
+        "body_with_company_population": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "seniority": ["c-level", "vp", "director"],
+                "departments": ["engineering", "technology"]
+              }
+            }
+          },
+          "select_columns": [
+            "uuid",
+            "first_name",
+            "last_name",
+            "email",
+            "title",
+            "company_id"
+          ],
+          "company_config": {
+            "populate": true,
+            "select_columns": [
+              "uuid",
+              "name",
+              "industries",
+              "employees_count",
+              "website"
+            ]
+          },
+          "limit": 25
+        },
+        "body_with_cursor_pagination": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "country": ["united states"]
+              }
+            }
+          },
+          "order_by": [
+            {
+              "order_by": "last_name",
+              "order_direction": "asc"
+            },
+            {
+              "order_by": "first_name",
+              "order_direction": "asc"
+            }
+          ],
+          "cursor": ["Smith", "John"],
+          "limit": 25
+        }
+      },
+      "response": {
+        "success_basic": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+                "first_name": "john",
+                "last_name": "doe",
+                "company_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                "email": "john.doe@acme.com",
+                "title": "Senior Software Engineer",
+                "departments": ["Engineering", "Product"],
+                "mobile_phone": "+15551234567",
+                "email_status": "verified",
+                "seniority": "senior",
+                "city": "san francisco",
+                "state": "california",
+                "country": "united states",
+                "linkedin_url": "https://linkedin.com/in/johndoe",
+                "facebook_url": "https://facebook.com/johndoe",
+                "twitter_url": "https://twitter.com/johndoe",
+                "website": "https://johndoe.dev",
+                "work_direct_phone": "+15550001234",
+                "stage": "prospect",
+                "created_at": "2024-01-10T08:00:00Z",
+                "updated_at": "2024-01-15T10:30:00Z",
+                "cursor": ["doe", "john"]
+              },
+              {
+                "uuid": "d4e5f6a7-b8c9-0123-def0-234567890123",
+                "first_name": "jane",
+                "last_name": "smith",
+                "company_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                "email": "jane.smith@techstart.io",
+                "title": "Product Manager",
+                "departments": ["Product", "Marketing"],
+                "mobile_phone": "+15559876543",
+                "email_status": "verified",
+                "seniority": "manager",
+                "city": "austin",
+                "state": "texas",
+                "country": "united states",
+                "linkedin_url": "https://linkedin.com/in/janesmith",
+                "stage": "qualified",
+                "created_at": "2024-01-12T09:00:00Z",
+                "updated_at": "2024-01-14T11:00:00Z",
+                "cursor": ["smith", "jane"]
+              }
+            ]
+          }
+        },
+        "success_with_company": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+                "first_name": "john",
+                "last_name": "doe",
+                "company_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                "email": "john.doe@acme.com",
+                "title": "VP of Engineering",
+                "cursor": ["doe", "john"],
+                "company": {
+                  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "name": "Acme Corporation",
+                  "industries": ["Technology", "Software"],
+                  "employees_count": 500,
+                  "website": "https://acme.com"
+                }
+              },
+              {
+                "uuid": "e5f6a7b8-c9d0-1234-ef01-345678901234",
+                "first_name": "sarah",
+                "last_name": "johnson",
+                "company_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                "email": "sarah.johnson@techstart.io",
+                "title": "CTO",
+                "cursor": ["johnson", "sarah"],
+                "company": {
+                  "uuid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                  "name": "TechStart Inc",
+                  "industries": ["Technology", "AI"],
+                  "employees_count": 50,
+                  "website": "https://techstart.io"
+                }
+              }
+            ]
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_PAGE_SIZE_EXCEEDED: the requested page size surpasses the maximum allowed limit; consider using pagination with smaller batches"
+          }
+        }
+      }
+    },
+    {
+      "name": "Get Contacts Count",
+      "endpoint": "/count",
+      "method": "POST",
+      "description": "Get the total count of contacts matching the filter criteria.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "country": ["united states"],
+                "seniority": ["senior", "manager", "director"],
+                "departments": ["engineering"]
+              }
+            },
+            "text_matches": {
+              "must": [
+                {
+                  "text_value": "software",
+                  "filter_key": "title",
+                  "search_type": "match"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "count": 8743
+          }
+        }
+      }
+    },
+    {
+      "name": "Batch Upsert Contacts",
+      "endpoint": "/batch-upsert",
+      "method": "POST",
+      "description": "Insert or update multiple contacts. UUID is auto-generated from first_name + last_name + LinkedIn URL if not provided. Optionally link to existing companies via company_id.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": [
+          {
+            "first_name": "John",
+            "last_name": "Doe",
+            "company_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "email": "john.doe@acme.com",
+            "title": "Senior Software Engineer",
+            "departments": ["Engineering", "Product"],
+            "mobile_phone": "+1-555-123-4567",
+            "email_status": "verified",
+            "seniority": "senior",
+            "city": "San Francisco",
+            "state": "California",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/in/johndoe",
+            "facebook_url": "https://facebook.com/johndoe",
+            "twitter_url": "https://twitter.com/johndoe",
+            "website": "https://johndoe.dev",
+            "work_direct_phone": "+1-555-000-1234",
+            "stage": "prospect"
+          },
+          {
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "company_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+            "email": "jane.smith@techstart.io",
+            "title": "Product Manager",
+            "departments": ["Product", "Marketing"],
+            "mobile_phone": "+1-555-987-6543",
+            "email_status": "verified",
+            "seniority": "manager",
+            "city": "Austin",
+            "state": "Texas",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/in/janesmith",
+            "stage": "qualified"
+          },
+          {
+            "first_name": "Michael",
+            "last_name": "Brown",
+            "company_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+            "email": "michael.brown@dataflow.com",
+            "title": "Data Scientist",
+            "departments": ["Data Science", "Analytics"],
+            "mobile_phone": "+1-555-456-7890",
+            "email_status": "verified",
+            "seniority": "senior",
+            "city": "Seattle",
+            "state": "Washington",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/in/michaelbrown",
+            "stage": "lead"
+          }
+        ]
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "contact_uuids": [
+              "c3d4e5f6-a7b8-9012-cdef-123456789012",
+              "d4e5f6a7-b8c9-0123-def0-234567890123",
+              "e5f6a7b8-c9d0-1234-ef01-345678901234"
+            ]
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_BATCH_TOO_LARGE: the number of records in the batch exceeds the allowed maximum; split the data into smaller chunks"
+          }
+        }
+      }
+    }
+  ],
+  "operations_guide": {
+    "upsert_definition": "UPSERT = UPDATE + INSERT. If a record with the same UUID exists, it will be updated. Otherwise, a new record is created.",
+    "uuid_generation": "UUID is auto-generated from: lowercase(first_name) + lowercase(last_name) + lowercase(linkedin_url). Sending the same combination will update the existing record.",
+    "supported_operations": {
+      "CREATE": "Send new data without existing UUID - creates new record",
+      "READ": "Use POST /contacts/ with VQL filters to search and retrieve contacts",
+      "UPDATE": "Send data with same first_name+last_name+linkedin_url OR explicit uuid - updates existing record",
+      "DELETE": "Not supported via API (managed internally)"
+    },
+    "update_example": "To update a contact, either: (1) Send data with same first_name + last_name + linkedin_url, OR (2) Include the 'uuid' field with the existing contact's UUID"
+  },
+  "field_descriptions": {
+    "uuid": "Unique identifier for the contact (auto-generated from first_name + last_name + linkedin_url)",
+    "first_name": "First name (lowercase)",
+    "last_name": "Last name (lowercase)",
+    "company_id": "UUID of the associated company",
+    "email": "Email address (lowercase)",
+    "title": "Job title",
+    "departments": "Array of departments (e.g., Engineering, Marketing)",
+    "mobile_phone": "Mobile phone number (cleaned format)",
+    "email_status": "Email verification status (e.g., verified, invalid, bounced)",
+    "seniority": "Seniority level (e.g., junior, senior, manager, director, vp, c-level)",
+    "city": "City (lowercase)",
+    "state": "State/Province (lowercase)",
+    "country": "Country (lowercase)",
+    "linkedin_url": "LinkedIn profile URL (lowercase)",
+    "facebook_url": "Facebook profile URL",
+    "twitter_url": "Twitter/X profile URL",
+    "website": "Personal website URL",
+    "work_direct_phone": "Work direct phone number (cleaned format)",
+    "home_phone": "Home phone number (cleaned format)",
+    "other_phone": "Other phone number (cleaned format)",
+    "stage": "Sales stage (e.g., prospect, lead, qualified, customer)",
+    "company": "Populated company object (when company_config.populate is true)",
+    "cursor": "Cursor values for pagination (based on order_by fields)"
+  },
+  "query_types": {
+    "text_matches": {
+      "description": "Full-text search on text fields",
+      "search_types": {
+        "match": "Basic word matching",
+        "match_phrase": "Phrase matching with word order",
+        "match_phrase_prefix": "Prefix matching for autocomplete"
+      },
+      "options": {
+        "slop": "Number of words allowed between phrase terms (for match_phrase)",
+        "fuzzy": "Enable fuzzy matching for typos",
+        "operator": "Boolean operator (and/or) for multiple words"
+      }
+    },
+    "keyword_match": {
+      "description": "Exact matching on keyword fields (arrays or exact values)",
+      "must": "Values that must be present",
+      "must_not": "Values that must not be present"
+    },
+    "range_query": {
+      "description": "Numeric range queries",
+      "operators": {
+        "gte": "Greater than or equal",
+        "gt": "Greater than",
+        "lte": "Less than or equal",
+        "lt": "Less than"
+      }
+    }
+  }
+}
+

@@ -13,7 +13,7 @@ import (
 )
 
 type BatchUpsertSvc interface {
-	ProcessBatchUpsert(batch []map[string]string) ([]*models.PgCompany, []*models.PgContact, error)
+	ProcessBatchUpsert(batch []map[string]string) ([]string, []string, error)
 }
 
 type batchUpsertService struct {
@@ -63,7 +63,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 	return insertionError
 }
 
-func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]*models.PgCompany, []*models.PgContact, error) {
+func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]string, []string, error) {
 	cleanedBatch := make([]map[string]string, 0, len(batch))
 	for _, row := range batch {
 		cleanedRow := make(map[string]string)
@@ -78,7 +78,9 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]*m
 	esCompanies := make([]*models.ElasticCompany, 0)
 	esContacts := make([]*models.ElasticContact, 0)
 
+	companyUuids, contactUuids := make([]string, 0), make([]string, 0)
 	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
+
 	for _, row := range cleanedBatch {
 		company := models.PgCompanyFromRawData(row)
 		contact := models.PgContactFromRowData(row, company)
@@ -89,13 +91,15 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]*m
 			insertedCompanies[company.UUID] = struct{}{}
 			pgCompanies = append(pgCompanies, company)
 			esCompanies = append(esCompanies, elasticCompany)
+			companyUuids = append(companyUuids, company.UUID)
 		}
 
 		if _, ok := insertedContacts[contact.UUID]; !ok {
 			insertedContacts[contact.UUID] = struct{}{}
 			pgContacts = append(pgContacts, contact)
 			esContacts = append(esContacts, elasticContact)
+			contactUuids = append(contactUuids, contact.UUID)
 		}
 	}
-	return pgCompanies, pgContacts, s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
+	return companyUuids, contactUuids, s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
 }

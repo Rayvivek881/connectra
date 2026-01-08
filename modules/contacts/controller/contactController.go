@@ -51,6 +51,6 @@ func BatchUpsert(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-	pgContacts, _ = service.NewContactService(tempFilters).BulkUpsert(pgContacts, esContacts)
-	c.JSON(http.StatusOK, gin.H{"success": true, "contacts": pgContacts})
+	contactUuids, _ := service.NewContactService(tempFilters).BulkUpsert(pgContacts, esContacts)
+	c.JSON(http.StatusOK, gin.H{"success": true, "contact_uuids": contactUuids})
 }

@@ -1,0 +1,331 @@
+{
+  "service": "Companies",
+  "base_path": "http://localhost:8000/companies",
+  "apis": [
+    {
+      "name": "Get Companies By Filter",
+      "endpoint": "/",
+      "method": "POST",
+      "description": "Search and filter companies using VQL (Vivek Query Language). Supports text matching, keyword matching, range queries, pagination, and sorting.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body_basic": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "country": ["united states", "canada"],
+                "industries": ["technology", "software"]
+              },
+              "must_not": {
+                "state": ["texas"]
+              }
+            }
+          },
+          "limit": 25,
+          "page": 1
+        },
+        "body_with_text_search": {
+          "where": {
+            "text_matches": {
+              "must": [
+                {
+                  "text_value": "artificial intelligence",
+                  "filter_key": "keywords",
+                  "search_type": "match_phrase",
+                  "slop": 2
+                }
+              ]
+            },
+            "keyword_match": {
+              "must": {
+                "country": ["united states"]
+              }
+            },
+            "range_query": {
+              "must": {
+                "employees_count": {
+                  "gte": 100,
+                  "lte": 5000
+                },
+                "annual_revenue": {
+                  "gte": 1000000
+                }
+              }
+            }
+          },
+          "order_by": [
+            {
+              "order_by": "employees_count",
+              "order_direction": "desc"
+            }
+          ],
+          "select_columns": [
+            "uuid",
+            "name",
+            "industries",
+            "employees_count",
+            "annual_revenue",
+            "city",
+            "state",
+            "country",
+            "website",
+            "linkedin_url"
+          ],
+          "limit": 50
+        },
+        "body_with_cursor_pagination": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "industries": ["software"]
+              }
+            }
+          },
+          "order_by": [
+            {
+              "order_by": "employees_count",
+              "order_direction": "desc"
+            },
+            {
+              "order_by": "name",
+              "order_direction": "asc"
+            }
+          ],
+          "cursor": ["5000", "Acme Corp"],
+          "limit": 25
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                "name": "Acme Corporation",
+                "employees_count": 500,
+                "industries": ["Technology", "Software"],
+                "keywords": ["SaaS", "B2B", "Enterprise"],
+                "address": "123 Main Street, Suite 100",
+                "annual_revenue": 50000000,
+                "total_funding": 25000000,
+                "technologies": ["React", "Node.js", "AWS"],
+                "city": "san francisco",
+                "state": "california",
+                "country": "united states",
+                "linkedin_url": "https://linkedin.com/company/acme-corp",
+                "website": "https://acme.com",
+                "normalized_domain": "acme.com",
+                "facebook_url": "https://facebook.com/acmecorp",
+                "twitter_url": "https://twitter.com/acmecorp",
+                "company_name_for_emails": "Acme Corp",
+                "phone_number": "+15550001234",
+                "latest_funding": "Series B",
+                "latest_funding_amount": 15000000,
+                "last_raised_at": "2024-06-15",
+                "created_at": "2024-01-10T08:00:00Z",
+                "updated_at": "2024-01-15T10:30:00Z",
+                "cursor": ["500", "Acme Corporation"]
+              },
+              {
+                "uuid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                "name": "TechStart Inc",
+                "employees_count": 50,
+                "industries": ["Technology", "AI"],
+                "keywords": ["Machine Learning", "Startup"],
+                "address": "456 Innovation Drive",
+                "annual_revenue": 5000000,
+                "total_funding": 2000000,
+                "technologies": ["Python", "TensorFlow", "GCP"],
+                "city": "austin",
+                "state": "texas",
+                "country": "united states",
+                "linkedin_url": "https://linkedin.com/company/techstart",
+                "website": "https://techstart.io",
+                "normalized_domain": "techstart.io",
+                "created_at": "2024-01-12T09:00:00Z",
+                "updated_at": "2024-01-14T11:00:00Z",
+                "cursor": ["50", "TechStart Inc"]
+              }
+            ]
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_PAGE_SIZE_EXCEEDED: the requested page size surpasses the maximum allowed limit; consider using pagination with smaller batches"
+          }
+        }
+      }
+    },
+    {
+      "name": "Get Companies Count",
+      "endpoint": "/count",
+      "method": "POST",
+      "description": "Get the total count of companies matching the filter criteria.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": {
+          "where": {
+            "keyword_match": {
+              "must": {
+                "country": ["united states"],
+                "industries": ["technology"]
+              }
+            },
+            "range_query": {
+              "must": {
+                "employees_count": {
+                  "gte": 100
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "count": 1542
+          }
+        }
+      }
+    },
+    {
+      "name": "Batch Upsert Companies",
+      "endpoint": "/batch-upsert",
+      "method": "POST",
+      "description": "Insert or update multiple companies. UUID is auto-generated from company name + LinkedIn URL if not provided.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": [
+          {
+            "name": "Acme Corporation",
+            "employees_count": 500,
+            "industries": ["Technology", "Software"],
+            "keywords": ["SaaS", "B2B", "Enterprise"],
+            "address": "123 Main Street, Suite 100",
+            "annual_revenue": 50000000,
+            "total_funding": 25000000,
+            "technologies": ["React", "Node.js", "AWS", "PostgreSQL"],
+            "city": "San Francisco",
+            "state": "California",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/company/acme-corp",
+            "website": "https://acme.com",
+            "facebook_url": "https://facebook.com/acmecorp",
+            "twitter_url": "https://twitter.com/acmecorp",
+            "company_name_for_emails": "Acme Corp",
+            "phone_number": "+1-555-000-1234",
+            "latest_funding": "Series B",
+            "latest_funding_amount": 15000000,
+            "last_raised_at": "2024-06-15"
+          },
+          {
+            "name": "TechStart Inc",
+            "employees_count": 50,
+            "industries": ["Technology", "AI"],
+            "keywords": ["Machine Learning", "Startup", "Innovation"],
+            "address": "456 Innovation Drive",
+            "annual_revenue": 5000000,
+            "total_funding": 2000000,
+            "technologies": ["Python", "TensorFlow", "GCP"],
+            "city": "Austin",
+            "state": "Texas",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/company/techstart",
+            "website": "https://techstart.io"
+          },
+          {
+            "name": "DataFlow Analytics",
+            "employees_count": 200,
+            "industries": ["Technology", "Data Analytics"],
+            "keywords": ["Big Data", "Analytics", "BI"],
+            "address": "789 Data Street",
+            "annual_revenue": 20000000,
+            "total_funding": 10000000,
+            "technologies": ["Spark", "Hadoop", "Python", "AWS"],
+            "city": "Seattle",
+            "state": "Washington",
+            "country": "United States",
+            "linkedin_url": "https://linkedin.com/company/dataflow-analytics",
+            "website": "https://dataflowanalytics.com",
+            "latest_funding": "Series A",
+            "latest_funding_amount": 8000000,
+            "last_raised_at": "2023-11-20"
+          }
+        ]
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "company_uuids": [
+              "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+              "c3d4e5f6-a7b8-9012-cdef-123456789012"
+            ]
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_BATCH_TOO_LARGE: the number of records in the batch exceeds the allowed maximum; split the data into smaller chunks"
+          }
+        }
+      }
+    }
+  ],
+  "operations_guide": {
+    "upsert_definition": "UPSERT = UPDATE + INSERT. If a record with the same UUID exists, it will be updated. Otherwise, a new record is created.",
+    "uuid_generation": "UUID is auto-generated from: lowercase(name) + lowercase(linkedin_url). Sending the same name + linkedin_url will update the existing record.",
+    "supported_operations": {
+      "CREATE": "Send new data without existing UUID - creates new record",
+      "READ": "Use POST /companies/ with VQL filters to search and retrieve companies",
+      "UPDATE": "Send data with same name+linkedin_url OR explicit uuid - updates existing record",
+      "DELETE": "Not supported via API (managed internally)"
+    },
+    "update_example": "To update a company, either: (1) Send data with same name + linkedin_url, OR (2) Include the 'uuid' field with the existing company's UUID"
+  },
+  "field_descriptions": {
+    "uuid": "Unique identifier for the company (auto-generated from name + linkedin_url)",
+    "name": "Company name",
+    "employees_count": "Number of employees",
+    "industries": "Array of industry categories",
+    "keywords": "Array of keywords/tags",
+    "address": "Full company address",
+    "annual_revenue": "Annual revenue in USD",
+    "total_funding": "Total funding received in USD",
+    "technologies": "Array of technologies used",
+    "city": "City (lowercase)",
+    "state": "State/Province (lowercase)",
+    "country": "Country (lowercase)",
+    "linkedin_url": "LinkedIn company URL (lowercase)",
+    "website": "Company website URL",
+    "normalized_domain": "Domain extracted from email (lowercase)",
+    "facebook_url": "Facebook page URL",
+    "twitter_url": "Twitter/X profile URL",
+    "company_name_for_emails": "Company name used in email signatures",
+    "phone_number": "Company phone number (cleaned format)",
+    "latest_funding": "Latest funding round type (e.g., 'Series A', 'Series B')",
+    "latest_funding_amount": "Amount raised in latest round",
+    "last_raised_at": "Date of last funding round",
+    "cursor": "Cursor values for pagination (based on order_by fields)"
+  }
+}
+

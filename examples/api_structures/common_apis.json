@@ -1,0 +1,377 @@
+{
+  "service": "Common",
+  "base_path": "http://localhost:8000/common",
+  "apis": [
+    {
+      "name": "Batch Upsert (CSV Data)",
+      "endpoint": "/batch-upsert",
+      "method": "POST",
+      "description": "Insert or update companies and contacts from raw CSV-like data. Each row should contain both company and contact information.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": {
+          "data": [
+            {
+              "company": "Acme Corporation",
+              "company_linkedin_url": "https://linkedin.com/company/acme-corp",
+              "email": "john.doe@acme.com",
+              "first_name": "John",
+              "last_name": "Doe",
+              "title": "Senior Software Engineer",
+              "departments": "Engineering, Product",
+              "employees": "500",
+              "industry": "Technology, Software",
+              "keywords": "SaaS, B2B, Enterprise",
+              "company_address": "123 Main Street, Suite 100",
+              "annual_revenue": "50000000",
+              "total_funding": "25000000",
+              "technologies": "React, Node.js, AWS, PostgreSQL",
+              "website": "https://acme.com",
+              "company_city": "San Francisco",
+              "company_state": "California",
+              "company_country": "United States",
+              "mobile_phone": "+1-555-123-4567",
+              "email_status": "verified",
+              "seniority": "senior",
+              "city": "San Francisco",
+              "state": "California",
+              "country": "United States",
+              "person_linkedin_url": "https://linkedin.com/in/johndoe",
+              "facebook_url": "https://facebook.com/acmecorp",
+              "twitter_url": "https://twitter.com/acmecorp",
+              "company_phone": "+1-555-000-1234",
+              "latest_funding": "Series B",
+              "latest_funding_amount": "15000000",
+              "last_raised_at": "2024-06-15"
+            },
+            {
+              "company": "TechStart Inc",
+              "company_linkedin_url": "https://linkedin.com/company/techstart",
+              "email": "jane.smith@techstart.io",
+              "first_name": "Jane",
+              "last_name": "Smith",
+              "title": "Product Manager",
+              "departments": "Product, Marketing",
+              "employees": "50",
+              "industry": "Technology, AI",
+              "keywords": "Machine Learning, Startup",
+              "company_address": "456 Innovation Drive",
+              "annual_revenue": "5000000",
+              "total_funding": "2000000",
+              "technologies": "Python, TensorFlow, GCP",
+              "website": "https://techstart.io",
+              "company_city": "Austin",
+              "company_state": "Texas",
+              "company_country": "United States",
+              "mobile_phone": "+1-555-987-6543",
+              "email_status": "verified",
+              "seniority": "manager",
+              "city": "Austin",
+              "state": "Texas",
+              "country": "United States",
+              "person_linkedin_url": "https://linkedin.com/in/janesmith"
+            }
+          ]
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "message": "Batch upsert successful",
+            "company_uuids": [
+              "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+            ],
+            "contact_uuids": [
+              "c3d4e5f6-a7b8-9012-cdef-123456789012",
+              "d4e5f6a7-b8c9-0123-def0-234567890123"
+            ]
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_EMPTY_PAYLOAD: the 'data' array in the request body is empty; provide at least one record to process"
+          }
+        }
+      }
+    },
+    {
+      "name": "Get Upload URL",
+      "endpoint": "/upload-url",
+      "method": "GET",
+      "description": "Generate a presigned S3 URL for uploading CSV files.",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <your_token>"
+        },
+        "query_params": {
+          "filename": "contacts_import_2024.csv"
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "upload_url": "https://s3.amazonaws.com/bucket-name/uploads/uuid_contacts_import_2024.csv?X-Amz-Algorithm=...",
+            "s3_key": "uploads/a1b2c3d4-e5f6-7890-abcd-ef1234567890_contacts_import_2024.csv",
+            "expires_in": "24h0m0s"
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_MISSING_FILENAME: 'filename' query parameter is required; provide a valid filename for the upload"
+          }
+        }
+      }
+    },
+    {
+      "name": "Create Job",
+      "endpoint": "/jobs/create",
+      "method": "POST",
+      "description": "Create a new background job for importing CSV files or exporting data.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body_insert_csv": {
+          "job_type": "insert_csv_file",
+          "job_data": {
+            "s3_key": "uploads/a1b2c3d4-e5f6-7890-abcd-ef1234567890_contacts_import_2024.csv",
+            "s3_bucket": "your-bucket-name"
+          },
+          "retry_count": 3
+        },
+        "body_export_csv": {
+          "job_type": "export_csv_file",
+          "job_data": {
+            "s3_bucket": "your-bucket-name",
+            "service": "contact",
+            "vql": {
+              "where": {
+                "keyword_match": {
+                  "must": {
+                    "country": ["united states"],
+                    "seniority": ["senior", "manager"]
+                  }
+                }
+              },
+              "select_columns": ["first_name", "last_name", "email", "title", "company_id"],
+              "limit": 1000
+            }
+          },
+          "retry_count": 2
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 201,
+          "body": {
+            "success": true,
+            "message": "Job created successfully"
+          }
+        },
+        "error": {
+          "status_code": 400,
+          "body": {
+            "success": false,
+            "error": "ERR_MISSING_JOB_TYPE: the 'job_type' field is required; specify a valid job type such as 'insert_csv_file' or 'export_csv_file'"
+          }
+        }
+      }
+    },
+    {
+      "name": "List Jobs",
+      "endpoint": "/jobs",
+      "method": "POST",
+      "description": "List background jobs with optional filtering by type and status.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "body": {
+          "job_type": "insert_csv_file",
+          "status": ["open", "in_queue", "processing", "completed", "failed"],
+          "limit": 20
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "id": 1,
+                "uuid": "job-uuid-1234-5678-abcd",
+                "job_type": "insert_csv_file",
+                "data": {
+                  "s3_key": "uploads/file.csv",
+                  "s3_bucket": "bucket-name"
+                },
+                "status": "completed",
+                "job_response": {
+                  "messages": "Successfully imported 150 records",
+                  "runtime_errors": []
+                },
+                "retry_count": 3,
+                "retry_interval": 30,
+                "created_at": "2024-01-15T10:30:00Z",
+                "updated_at": "2024-01-15T10:35:00Z"
+              },
+              {
+                "id": 2,
+                "uuid": "job-uuid-5678-abcd-efgh",
+                "job_type": "export_csv_file",
+                "data": {
+                  "s3_bucket": "bucket-name",
+                  "service": "contact"
+                },
+                "status": "processing",
+                "job_response": {},
+                "retry_count": 2,
+                "retry_interval": 30,
+                "created_at": "2024-01-15T11:00:00Z",
+                "updated_at": "2024-01-15T11:00:00Z"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "Get Filters",
+      "endpoint": "/:service/filters",
+      "method": "GET",
+      "description": "Get available filters for a service (companies or contacts).",
+      "request": {
+        "headers": {
+          "Authorization": "Bearer <your_token>"
+        },
+        "path_params": {
+          "service": "contact"
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "id": 1,
+                "key": "country",
+                "service": "contact",
+                "filter_type": "keyword",
+                "display_name": "Country",
+                "direct_derived": false,
+                "active": true
+              },
+              {
+                "id": 2,
+                "key": "seniority",
+                "service": "contact",
+                "filter_type": "keyword",
+                "display_name": "Seniority Level",
+                "direct_derived": false,
+                "active": true
+              },
+              {
+                "id": 3,
+                "key": "departments",
+                "service": "contact",
+                "filter_type": "keyword",
+                "display_name": "Departments",
+                "direct_derived": false,
+                "active": true
+              },
+              {
+                "id": 4,
+                "key": "title",
+                "service": "contact",
+                "filter_type": "text",
+                "display_name": "Job Title",
+                "direct_derived": true,
+                "active": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "Get Filter Data",
+      "endpoint": "/:service/filters/data",
+      "method": "POST",
+      "description": "Get filter values/options for a specific filter key with search and pagination.",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <your_token>"
+        },
+        "path_params": {
+          "service": "contact"
+        },
+        "body": {
+          "filter_key": "country",
+          "search_text": "united",
+          "page": 1,
+          "limit": 20
+        }
+      },
+      "response": {
+        "success": {
+          "status_code": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "value": "united states",
+                "display_value": "United States"
+              },
+              {
+                "value": "united kingdom",
+                "display_value": "United Kingdom"
+              },
+              {
+                "value": "united arab emirates",
+                "display_value": "United Arab Emirates"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "operations_guide": {
+    "upsert_definition": "UPSERT = UPDATE + INSERT. If a record with the same UUID exists, it will be updated. Otherwise, a new record is created.",
+    "uuid_generation": {
+      "companies": "UUID generated from: lowercase(company_name) + lowercase(company_linkedin_url)",
+      "contacts": "UUID generated from: lowercase(first_name) + lowercase(last_name) + lowercase(person_linkedin_url)"
+    },
+    "supported_operations": {
+      "CREATE": "Send new data - creates new records for companies and contacts",
+      "READ": "Use filter APIs (GET /:service/filters, POST /:service/filters/data, POST /companies/, POST /contacts/)",
+      "UPDATE": "Send data with same identifier fields - updates existing records automatically",
+      "DELETE": "Not supported via API (managed internally with soft deletes)"
+    },
+    "batch_upsert_behavior": "Each row in the batch is processed independently. Companies and contacts are extracted, cleaned, and upserted. Duplicates within the same batch are handled automatically."
+  },
+  "constants": {
+    "valid_service_values": ["contact", "company"],
+    "valid_job_types": ["insert_csv_file", "export_csv_file"],
+    "valid_job_statuses": ["open", "in_queue", "processing", "completed", "failed", "retry_in_queued", "retrying"]
+  }
+}
+
