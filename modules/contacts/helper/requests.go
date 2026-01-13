@@ -7,7 +7,6 @@ import (
 	"vivek-ray/utilities"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type FilterStatusUpdate struct {
@@ -56,9 +55,13 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.Elas
 		return nil, nil, constants.PageSizeExceededError
 	}
 	for _, contact := range pgContacts {
-		if _, err := uuid.Parse(contact.CompanyID); err == nil {
-			companyUuids = append(companyUuids, contact.CompanyID)
+		if !utilities.IsUuidValid(contact.UUID) {
+			return nil, nil, constants.InvalidUUIDError(contact.UUID)
 		}
+		if !utilities.IsUuidValid(contact.CompanyID) {
+			return nil, nil, constants.InvalidUUIDError(contact.CompanyID)
+		}
+		companyUuids = append(companyUuids, contact.CompanyID)
 	}
 	companies, err := companyService.NewCompanyService([]*models.ModelFilter{}).GetCompanyByUuids(companyUuids, []string{})
 	if err != nil {

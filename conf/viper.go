@@ -54,7 +54,7 @@ type s3Storage struct {
 	S3Endpoint       string `mapstructure:"S3_ENDPOINT"`
 	S3SSL            bool   `mapstructure:"S3_SSL"`
 	S3Debug          bool   `mapstructure:"S3_DEBUG"`
-	S3UploadURLTTL   int    `mapstructure:"S3_UPLOAD_URL_TTL_HOURS"`
+	S3URLTTL         int    `mapstructure:"S3_UPLOAD_URL_TTL_HOURS"`
 	S3UploadFilePath string `mapstructure:"S3_UPLOAD_FILE_PATH_PRIFIX"`
 }
 

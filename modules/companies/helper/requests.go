@@ -55,6 +55,9 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.Elas
 		return nil, nil, constants.PageSizeExceededError
 	}
 	for _, pgCompany := range pgCompanies {
+		if !utilities.IsUuidValid(pgCompany.UUID) {
+			return nil, nil, constants.InvalidUUIDError(pgCompany.UUID)
+		}
 		esCompanies = append(esCompanies, models.ElasticCompanyFromRawData(pgCompany))
 	}
 	return pgCompanies, esCompanies, nil

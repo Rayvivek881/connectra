@@ -202,3 +202,21 @@ func (c *S3Connection) WriteFileStream(ctx context.Context, bucket, key string, 
 	}
 	return nil
 }
+
+func (c *S3Connection) GetDownloadPresignedURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error) {
+	presignClient := s3.NewPresignClient(c.Client)
+
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	presignedURL, err := presignClient.PresignGetObject(ctx, input, s3.WithPresignExpires(expiry))
+	if err != nil {
+		log.Error().Err(err).Msgf("Error generating download presigned URL for: %s", key)
+		return "", err
+	}
+
+	log.Debug().Msgf("Successfully generated download presigned URL for: %s", key)
+	return presignedURL.URL, nil
+}

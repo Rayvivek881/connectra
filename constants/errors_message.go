@@ -22,10 +22,27 @@ var (
 
 	InvalidServiceError     = errors.New("ERR_UNKNOWN_SERVICE: the provided service identifier is not recognized; use 'contacts' or 'companies'")
 	InvalidServiceTypeError = errors.New("ERR_UNSUPPORTED_SERVICE: the specified service type is not supported for this operation; verify the endpoint and try again")
+
+	JobNotFoundError    = errors.New("ERR_JOB_NOT_FOUND: the requested job does not exist; verify the job UUID and try again")
+	JobUuidRequiredError = errors.New("ERR_JOB_UUID_REQUIRED: 'job_uuid' path parameter is required; provide a valid job UUID")
+
+	FilenameRequiredError            = errors.New("ERR_FILENAME_REQUIRED: 'filename' query parameter is required; provide a valid filename")
+	S3KeyRequiredError               = errors.New("ERR_S3_KEY_REQUIRED: 's3_key' query parameter is required; provide a valid S3 key")
+	FailedToGenerateUploadURLError   = errors.New("ERR_UPLOAD_URL_GENERATION_FAILED: failed to generate presigned upload URL; please retry or contact support")
+	FailedToGenerateDownloadURLError = errors.New("ERR_DOWNLOAD_URL_GENERATION_FAILED: failed to generate presigned download URL; please retry or contact support")
+
+	FailedToInitBatchServiceError = errors.New("ERR_BATCH_SERVICE_INIT_FAILED: failed to initialize batch service; please retry or contact support")
+
+	RateLimitExceededError = errors.New("ERR_RATE_LIMIT_EXCEEDED: too many requests; please try again later")
+	UnauthorizedError      = errors.New("ERR_UNAUTHORIZED: invalid or missing API key; provide a valid 'X-API-Key' header")
 )
 
 func InvalidJobTypeError(jobType string) error {
 	return fmt.Errorf("ERR_INVALID_JOB_TYPE: job type '%s' is not recognized; supported types are 'insert_csv_file' and 'export_csv_file'", jobType)
+}
+
+func InvalidUUIDError(uuid string) error {
+	return fmt.Errorf("ERR_INVALID_UUID: '%s' is not a valid UUID format; use a valid UUID like 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'", uuid)
 }
 
 func ElasticsearchError(statusCode int, body string) error {

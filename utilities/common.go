@@ -206,3 +206,7 @@ func StructToCsvSlice(v interface{}, columns []string) []string {
 	}
 	return row
 }
+
+func IsUuidValid(value string) bool {
+	return uuid.Validate(value) == nil
+}

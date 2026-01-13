@@ -80,7 +80,14 @@ func ExportContactsCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) er
 	if err := csvWriter.Write(vql.SelectColumns); err != nil {
 		return err
 	}
-	for {
+	remaining, unlimited := vql.Limit, vql.Limit == 0
+
+	for unlimited || remaining > 0 {
+		vql.Limit = conf.JobConfig.BatchSize
+		if !unlimited {
+			vql.Limit = min(remaining, conf.JobConfig.BatchSize)
+		}
+
 		contacts, err := service.ListByFilters(vql)
 		if err != nil {
 			return err
@@ -96,6 +103,7 @@ func ExportContactsCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) er
 			}
 		}
 
+		remaining -= len(contacts)
 		vql.Cursor = contacts[len(contacts)-1].Cursor
 		csvWriter.Flush()
 	}
@@ -108,9 +116,14 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 	if err := csvWriter.Write(vql.SelectColumns); err != nil {
 		return err
 	}
-
+	remaining, unlimited := vql.Limit, vql.Limit == 0
 	service := companyService.NewCompanyService([]*models.ModelFilter{})
-	for {
+	for unlimited || remaining > 0 {
+		vql.Limit = conf.JobConfig.BatchSize
+		if !unlimited {
+			vql.Limit = min(remaining, conf.JobConfig.BatchSize)
+		}
+
 		companies, err := service.ListByFilters(vql)
 		if err != nil {
 			return err
@@ -118,12 +131,15 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 		if len(companies) == 0 {
 			break
 		}
+
 		for _, company := range companies {
 			row := utilities.StructToCsvSlice(company, vql.SelectColumns)
 			if err := csvWriter.Write(row); err != nil {
 				return err
 			}
 		}
+
+		remaining -= len(companies)
 		vql.Cursor = companies[len(companies)-1].Cursor
 		csvWriter.Flush()
 	}
@@ -133,7 +149,7 @@ func ExportCompaniesCsvToStream(writer *io.PipeWriter, vql utilities.VQLQuery) e
 func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobData) error {
 	vql := jobData.VQL
 	vql.OrderBy = []utilities.FilterOrder{{OrderBy: "uuid", OrderDirection: "desc"}}
-	vql.Limit = conf.JobConfig.BatchSize
+	vql.Page = 0
 
 	if len(vql.SelectColumns) == 0 {
 		return constants.SelectColumnsRequiredError
