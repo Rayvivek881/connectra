@@ -11,10 +11,12 @@ func Routes(router *gin.RouterGroup) {
 
 	// Upload
 	router.GET("/upload-url", controller.GetUploadURL)
+	router.GET("/download-url", controller.GetDownloadURL)
 
 	// Jobs
 	router.POST("/jobs", controller.ListJobs)
 	router.POST("/jobs/create", controller.CreateJob)
+	router.GET("/jobs/:job_uuid", controller.GetJobByUuid)
 
 	// Filters
 	router.GET("/:service/filters", controller.GetFilters)

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"vivek-ray/constants"
 	"vivek-ray/modules/common/helper"
 	"vivek-ray/modules/common/service"
 
@@ -17,7 +18,7 @@ func BatchUpsert(c *gin.Context) {
 
 	batchService := service.NewBatchUpsertService()
 	if batchService == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize batch service", "success": false})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.FailedToInitBatchServiceError.Error(), "success": false})
 		return
 	}
 	companyUuids, contactUuids, err := batchService.ProcessBatchUpsert(request.Data)

@@ -117,6 +117,9 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.Elas
 	for _, company := range rawCompanies {
 		cleanedCompany := CleanCompanyData(company)
 		pgCompanies = append(pgCompanies, cleanedCompany)
+		if !utilities.IsUuidValid(cleanedCompany.UUID) {
+			return nil, nil, constants.InvalidUUIDError(cleanedCompany.UUID)
+		}
 		esCompanies = append(esCompanies, models.ElasticCompanyFromRawData(cleanedCompany))
 	}
 

@@ -20,6 +20,7 @@ func JobsRepository(db *bun.DB) JobsSvcRepo {
 }
 
 type JobsFilters struct {
+	Uuids    []string
 	JobType  string
 	Status   []string
 	Limit    int
@@ -35,6 +36,9 @@ func (f *JobsFilters) ToWhereQuery(query *bun.SelectQuery) *bun.SelectQuery {
 	}
 	if f.Retrying {
 		query.Where("retry_count > 0")
+	}
+	if len(f.Uuids) > 0 {
+		query.Where("uuid IN (?)", bun.In(f.Uuids))
 	}
 
 	limit := utilities.InlineIf(f.Limit > 0, f.Limit, constants.DefaultPageSize).(int)

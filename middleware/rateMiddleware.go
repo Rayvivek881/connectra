@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 	"vivek-ray/conf"
+	"vivek-ray/constants"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,8 +44,8 @@ func RateLimiter() gin.HandlerFunc {
 		if tokens <= 0 {
 			mu.Unlock()
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error":   "rate limit exceeded",
-				"message": "too many requests, please try again later",
+				"error":   constants.RateLimitExceededError.Error(),
+				"success": false,
 			})
 			return
 		}
