@@ -182,9 +182,9 @@ func GetCleanedPhoneNumber(phoneNumber string) string {
 }
 
 func CsvRowToMap(headers, row []string) map[string]string {
-	result := make(map[string]string)
+	result := make(map[string]string, len(headers))
 	for i, header := range headers {
-		result[header] = row[i]
+		result[strings.Clone(header)] = strings.Clone(row[i])
 	}
 	return result
 }
