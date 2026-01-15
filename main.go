@@ -2,6 +2,7 @@ package main
 
 import (
 	"runtime"
+	"runtime/debug"
 	"time"
 	"vivek-ray/cmd"
 	"vivek-ray/conf"
@@ -29,6 +30,10 @@ func MemoryStats() {
 }
 
 func main() {
+	// Aggressive GC: minimize memory usage (trades CPU for lower memory)
+	debug.SetMemoryLimit(128 * MB) // Soft limit: GC becomes very aggressive near this
+	debug.SetGCPercent(50)         // GC triggers at 50% heap growth (4x more frequent than default)
+
 	v := conf.Viper{}
 	v.Init()
 

@@ -64,24 +64,22 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 }
 
 func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error {
-	cleanedBatch := make([]map[string]string, 0, len(batch))
+	batchLen := len(batch)
+
+	pgCompanies := make([]*models.PgCompany, 0, batchLen)
+	pgContacts := make([]*models.PgContact, 0, batchLen)
+	esCompanies := make([]*models.ElasticCompany, 0, batchLen)
+	esContacts := make([]*models.ElasticContact, 0, batchLen)
+
+	insertedCompanies := make(map[string]struct{}, batchLen)
+	insertedContacts := make(map[string]struct{}, batchLen)
 	for _, row := range batch {
-		cleanedRow := make(map[string]string)
+		cleanedRow := make(map[string]string, len(row))
 		for key, value := range row {
 			cleanedRow[utilities.GetCleanedString(key)] = utilities.GetCleanedString(value)
 		}
-		cleanedBatch = append(cleanedBatch, cleanedRow)
-	}
-
-	pgCompanies := make([]*models.PgCompany, 0)
-	pgContacts := make([]*models.PgContact, 0)
-	esCompanies := make([]*models.ElasticCompany, 0)
-	esContacts := make([]*models.ElasticContact, 0)
-
-	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
-	for _, row := range cleanedBatch {
-		company := models.PgCompanyFromRawData(row)
-		contact := models.PgContactFromRowData(row, company)
+		company := models.PgCompanyFromRawData(cleanedRow)
+		contact := models.PgContactFromRowData(cleanedRow, company)
 		elasticCompany := models.ElasticCompanyFromRawData(company)
 		elasticContact := models.ElasticContactFromRawData(contact, company)
 
