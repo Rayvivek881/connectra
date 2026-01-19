@@ -1,5 +1,7 @@
 package utilities
 
+import "github.com/uptrace/bun"
+
 type ElasticCount struct {
 	Count int64 `json:"count"`
 }
@@ -39,16 +41,35 @@ type CompanyConfig struct {
 	SelectColumns []string `json:"select_columns,omitempty"`
 }
 
+type DefaultFilters struct {
+	Page    int           `json:"page,omitempty"`
+	Limit   int           `json:"limit,omitempty"`
+	OrderBy []FilterOrder `json:"order_by,omitempty"`
+}
+
+func (f *DefaultFilters) ToWhere(query *bun.SelectQuery) *bun.SelectQuery {
+	if f.Page > 0 {
+		query = query.Offset((f.Page - 1) * f.Limit)
+	}
+	if f.Limit > 0 {
+		query = query.Limit(f.Limit)
+	}
+	if len(f.OrderBy) > 0 {
+		for _, order := range f.OrderBy {
+			query = query.Order(order.OrderBy + " " + order.OrderDirection)
+		}
+	}
+	return query
+}
+
 type VQLQuery struct { // vivek Query Language
 	Where WhereStruct `json:"where"`
 
-	OrderBy       []FilterOrder  `json:"order_by,omitempty"`
 	Cursor        []string       `json:"cursor,omitempty"`
 	SelectColumns []string       `json:"select_columns,omitempty"`
 	CompanyConfig *CompanyConfig `json:"company_config,omitempty"`
 
-	Page  int `json:"page,omitempty"`
-	Limit int `json:"limit,omitempty"`
+	DefaultFilters
 }
 
 type InsertFileJobData struct {

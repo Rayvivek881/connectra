@@ -8,33 +8,34 @@ import (
 	"vivek-ray/connections"
 	"vivek-ray/constants"
 	"vivek-ray/models"
+	"vivek-ray/utilities"
 
 	"github.com/rs/zerolog/log"
 )
 
 type JobStruct struct {
-	JobsRepository models.JobsSvcRepo
+	JobsRepository models.JobNodeSvcRepo
 }
 
 func NewJobService() JobSvc {
 	return &JobStruct{
-		JobsRepository: models.JobsRepository(connections.PgDBConnection.Client),
+		JobsRepository: models.JobNodeRepository(connections.PgDBConnection.Client),
 	}
 }
 
 type JobSvc interface {
 	FirstTimeJob(ctx context.Context, args []string)
 	RetryJobs(ctx context.Context, args []string)
-	JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsChannel chan models.ModelJobs)
-	DequeueJobs(jobsChannel chan models.ModelJobs, status string)
+	JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsChannel chan models.ModelJobNodes)
+	DequeueJobs(jobsChannel chan models.ModelJobNodes, status string)
 }
 
-func (j *JobStruct) JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsChannel chan models.ModelJobs) {
+func (j *JobStruct) JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsChannel chan models.ModelJobNodes) {
 	defer wg.Done()
 	serverTime := time.Now()
 	for job := range jobsChannel {
 		job.Status = constants.ProcessingJobStatus
-		if err := j.JobsRepository.BulkUpsert([]*models.ModelJobs{&job}); err != nil {
+		if err := j.JobsRepository.JobsBulkUpsert([]*models.ModelJobNodes{&job}); err != nil {
 			log.Error().Err(err).Msg("Failed to bulk upsert jobs")
 			continue
 		}
@@ -56,26 +57,26 @@ func (j *JobStruct) JobConsumer(wg *sync.WaitGroup, ctx context.Context, jobsCha
 		if jobError != nil {
 			retryAfter := serverTime.Add(time.Duration(job.RetryInterval) * time.Second)
 			job.Status = constants.FailedJobStatus
-			job.AddRuntimeError(jobError.Error())
-			job.RunAfter = &retryAfter
+			job.AddToJobResponse("runtime_errors", jobError.Error())
+			job.RunAfter = retryAfter
 		} else {
 			job.Status = constants.CompletedJobStatus
 		}
 
-		if err := j.JobsRepository.BulkUpsert([]*models.ModelJobs{&job}); err != nil {
+		if err := j.JobsRepository.JobsBulkUpsert([]*models.ModelJobNodes{&job}); err != nil {
 			log.Error().Err(err).Msg("Failed to bulk upsert jobs")
 		}
 	}
 }
 
-func (j *JobStruct) DequeueJobs(jobsChannel chan models.ModelJobs, status string) {
-	jobs := make([]*models.ModelJobs, 0, len(jobsChannel))
+func (j *JobStruct) DequeueJobs(jobsChannel chan models.ModelJobNodes, status string) {
+	jobs := make([]*models.ModelJobNodes, 0, len(jobsChannel))
 	for job := range jobsChannel {
 		job.Status = status
 		jobs = append(jobs, &job)
 	}
 	if len(jobs) > 0 {
-		if err := j.JobsRepository.BulkUpsert(jobs); err != nil {
+		if err := j.JobsRepository.JobsBulkUpsert(jobs); err != nil {
 			log.Error().Err(err).Msg("Failed to bulk upsert jobs")
 		}
 	}
@@ -84,7 +85,7 @@ func (j *JobStruct) DequeueJobs(jobsChannel chan models.ModelJobs, status string
 
 func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 	var wg sync.WaitGroup
-	jobsChannel := make(chan models.ModelJobs, 1000)
+	jobsChannel := make(chan models.ModelJobNodes, 1000)
 
 	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
 	defer func() {
@@ -110,9 +111,11 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 			if len(jobsChannel) >= inQueSize {
 				continue
 			}
-			jobs, err := j.JobsRepository.ListByFilters(models.JobsFilters{
+			jobs, err := j.JobsRepository.GetJobs(&models.JobFilters{
 				Status: []string{constants.OpenJobStatus},
-				Limit:  1,
+				DefaultFilters: utilities.DefaultFilters{
+					Limit: 1,
+				},
 			})
 
 			if err != nil {
@@ -127,7 +130,7 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 				log.Info().Msgf("pushing job to in queue: %s", job.UUID)
 				job.Status = constants.InQueueJobStatus
 			}
-			if err = j.JobsRepository.BulkUpsert(jobs); err != nil {
+			if err = j.JobsRepository.JobsBulkUpsert(jobs); err != nil {
 				log.Error().Err(err).Msg("Failed to bulk upsert jobs")
 				continue
 			}
@@ -143,7 +146,7 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 
 func (j *JobStruct) RetryJobs(ctx context.Context, args []string) {
 	var wg sync.WaitGroup
-	jobsChannel := make(chan models.ModelJobs, 1000)
+	jobsChannel := make(chan models.ModelJobNodes, 1000)
 
 	wg.Add(1)
 	go j.JobConsumer(&wg, ctx, jobsChannel)
@@ -163,10 +166,12 @@ func (j *JobStruct) RetryJobs(ctx context.Context, args []string) {
 			j.DequeueJobs(jobsChannel, constants.FailedJobStatus)
 			return
 		case <-ticker.C:
-			jobs, err := j.JobsRepository.ListByFilters(models.JobsFilters{
+			jobs, err := j.JobsRepository.GetJobs(&models.JobFilters{
 				Retrying: true,
 				Status:   []string{constants.FailedJobStatus},
-				Limit:    1,
+				DefaultFilters: utilities.DefaultFilters{
+					Limit: 1,
+				},
 			})
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to list jobs")
@@ -180,7 +185,7 @@ func (j *JobStruct) RetryJobs(ctx context.Context, args []string) {
 			for _, job := range jobs {
 				job.Status = constants.RetryInQueuedJobStatus
 			}
-			if err = j.JobsRepository.BulkUpsert(jobs); err != nil {
+			if err = j.JobsRepository.JobsBulkUpsert(jobs); err != nil {
 				log.Error().Err(err).Msg("Failed to bulk upsert jobs")
 				continue
 			}

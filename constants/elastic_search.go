@@ -10,5 +10,5 @@ var (
 	DefaultPageSize      = 25
 	MaxElasticPageNumber = 10
 	MaxPageSize          = 100
+	MaxNodesPerRequest   = 100
 )
-

@@ -2,65 +2,78 @@ package controller
 
 import (
 	"net/http"
-	"vivek-ray/constants"
+	"vivek-ray/connections"
+	"vivek-ray/models"
 	"vivek-ray/modules/common/helper"
 	"vivek-ray/modules/common/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func CreateJob(c *gin.Context) {
-	request, err := helper.BindAndValidateCreateJob(c)
+func BulkInsertCompleteGraph(c *gin.Context) {
+	requested_nodes, err := helper.GetBulkInsertCompleteGraphRequest(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err = service.NewJobService().CreateJob(request)
+	err = service.NewJobService(connections.PgDBConnection.Client).BulkInsertJobs(requested_nodes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Job created successfully",
-		"success": true,
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Jobs inserted successfully"})
 }
 
-func ListJobs(c *gin.Context) {
-	request, err := helper.BindAndValidateListJobs(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
+func UpdateAndRetriggerJob(c *gin.Context) {
+	uuid := c.Param("uuid")
+	if uuid == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "uuid is required"})
 		return
 	}
 
-	jobs, err := service.NewJobService().ListJobs(request)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
+	var req helper.UpdateJobRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data":    jobs,
-		"success": true,
-	})
+	err := service.NewJobService(connections.PgDBConnection.Client).UpdateAndRetriggerJob(uuid, req.Data, req.RetryCount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Job updated and retriggered successfully"})
 }
 
-func GetJobByUuid(c *gin.Context) {
-	jobUuid := c.Param("job_uuid")
-	if jobUuid == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": constants.JobUuidRequiredError.Error(), "success": false})
+func GetJobs(c *gin.Context) {
+	var filters models.JobFilters
+	if err := c.ShouldBindQuery(&filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	job, err := service.NewJobService().GetJobByUuid(jobUuid)
+	jobs, err := service.NewJobService(connections.PgDBConnection.Client).GetJobs(&filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"data":    job,
-		"success": true,
-	})
+
+	c.JSON(http.StatusOK, gin.H{"data": jobs})
+}
+
+func GetJobByUUID(c *gin.Context) {
+	uuid := c.Param("uuid")
+	if uuid == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "uuid is required"})
+		return
+	}
+
+	job, err := service.NewJobService(connections.PgDBConnection.Client).GetJobByUUID(uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": job})
 }

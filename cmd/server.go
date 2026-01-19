@@ -32,7 +32,7 @@ func init() {
 }
 
 func startServer() {
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 	router.Use(gin.Logger())

@@ -53,7 +53,7 @@ func InsertCsvToDb(fileStream *io.ReadCloser) (int, error) {
 	return totalInserted, nil
 }
 
-func ProcessInsertCsvFile(job *models.ModelJobs) error {
+func ProcessInsertCsvFile(job *models.ModelJobNodes) error {
 	var jobData utilities.InsertFileJobData
 	if err := json.Unmarshal(job.Data, &jobData); err != nil {
 		return err
@@ -71,7 +71,7 @@ func ProcessInsertCsvFile(job *models.ModelJobs) error {
 	}
 	defer fileStream.Close()
 	count, err := InsertCsvToDb(&fileStream)
-	job.AddMessage(fmt.Sprintf("%d count of data inserted", count))
+	job.AddToJobResponse("message", fmt.Sprintf("%d count of data inserted", count))
 	return err
 }
 
@@ -170,7 +170,7 @@ func ExportCsvToStream(writer *io.PipeWriter, jobData utilities.ExportFileJobDat
 	}
 }
 
-func ProcessExportCsvFile(job *models.ModelJobs) error {
+func ProcessExportCsvFile(job *models.ModelJobNodes) error {
 	var jobData utilities.ExportFileJobData
 	if err := json.Unmarshal(job.Data, &jobData); err != nil {
 		return err
@@ -192,7 +192,7 @@ func ProcessExportCsvFile(job *models.ModelJobs) error {
 		return err
 	}
 
-	job.AddS3Key(s3Key)
-	job.AddMessage(fmt.Sprintln("Export is Successfull pls download from s3"))
+	job.AddToJobResponse("message", fmt.Sprintln("Export is Successfull pls download from s3"))
+	job.AddToJobResponse("s3_key", s3Key)
 	return nil
 }

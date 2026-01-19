@@ -23,8 +23,12 @@ var (
 	InvalidServiceError     = errors.New("ERR_UNKNOWN_SERVICE: the provided service identifier is not recognized; use 'contacts' or 'companies'")
 	InvalidServiceTypeError = errors.New("ERR_UNSUPPORTED_SERVICE: the specified service type is not supported for this operation; verify the endpoint and try again")
 
-	JobNotFoundError    = errors.New("ERR_JOB_NOT_FOUND: the requested job does not exist; verify the job UUID and try again")
+	JobNotFoundError     = errors.New("ERR_JOB_NOT_FOUND: the requested job does not exist; verify the job UUID and try again")
+	ErrJobNotFound       = JobNotFoundError // alias for consistency
 	JobUuidRequiredError = errors.New("ERR_JOB_UUID_REQUIRED: 'job_uuid' path parameter is required; provide a valid job UUID")
+
+	ErrDuplicateJobUUIDs = errors.New("ERR_DUPLICATE_JOB_UUIDS: one or more job UUIDs already exist in the system; use unique UUIDs for new jobs")
+	ErrJobFetch          = errors.New("ERR_JOB_FETCH_FAILED: failed to fetch job from database")
 
 	FilenameRequiredError            = errors.New("ERR_FILENAME_REQUIRED: 'filename' query parameter is required; provide a valid filename")
 	S3KeyRequiredError               = errors.New("ERR_S3_KEY_REQUIRED: 's3_key' query parameter is required; provide a valid S3 key")
@@ -35,6 +39,8 @@ var (
 
 	RateLimitExceededError = errors.New("ERR_RATE_LIMIT_EXCEEDED: too many requests; please try again later")
 	UnauthorizedError      = errors.New("ERR_UNAUTHORIZED: invalid or missing API key; provide a valid 'X-API-Key' header")
+
+	ErrInvalidDAG = errors.New("ERR_INVALID_DAG: the provided graph is not a valid DAG; ensure there are no cycles and all node references are valid")
 )
 
 func InvalidJobTypeError(jobType string) error {
@@ -51,4 +57,11 @@ func ElasticsearchError(statusCode int, body string) error {
 
 func ElasticsearchBulkError(statusCode int, body string) error {
 	return fmt.Errorf("ERR_ELASTICSEARCH_BULK_FAILURE: bulk indexing operation returned status %d; details: %s", statusCode, body)
+}
+
+func ErrorWrap(baseErr, wrappedErr error) error {
+	if wrappedErr == nil {
+		return baseErr
+	}
+	return fmt.Errorf("%w: %v", baseErr, wrappedErr)
 }
