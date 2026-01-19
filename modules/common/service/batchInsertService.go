@@ -71,8 +71,7 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) error
 	esCompanies := make([]*models.ElasticCompany, 0, batchLen)
 	esContacts := make([]*models.ElasticContact, 0, batchLen)
 
-	insertedCompanies := make(map[string]struct{}, batchLen)
-	insertedContacts := make(map[string]struct{}, batchLen)
+	insertedCompanies, insertedContacts := make(map[string]struct{}, batchLen), make(map[string]struct{}, batchLen)
 	for _, row := range batch {
 		cleanedRow := make(map[string]string, len(row))
 		for key, value := range row {
