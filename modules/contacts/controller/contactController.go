@@ -41,7 +41,7 @@ func GetContactsCountByFilter(c *gin.Context) {
 }
 
 func BatchUpsert(c *gin.Context) {
-	pgContacts, esContacts, err := helper.BindBatchUpsertRequest(c)
+	pgContacts, osContacts, err := helper.BindBatchUpsertRequest(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
@@ -51,6 +51,6 @@ func BatchUpsert(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-	service.NewContactService(tempFilters).BulkUpsert(pgContacts, esContacts)
+	service.NewContactService(tempFilters).BulkUpsert(pgContacts, osContacts)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

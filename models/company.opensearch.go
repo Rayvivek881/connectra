@@ -3,11 +3,11 @@ package models
 import (
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/opensearch-project/opensearch-go/v2"
 )
 
-type ElasticCompany struct {
-	client *elasticsearch.Client
+type OpenSearchCompany struct {
+	client *opensearch.Client
 
 	UUID string `json:"uuid"`
 
@@ -18,20 +18,20 @@ type ElasticCompany struct {
 	Address          string   `json:"address"`           // text search
 	AnnualRevenue    int64    `json:"annual_revenue"`    // number search
 	TotalFunding     int64    `json:"total_funding"`     // number search
-	Technologies     []string `json:"technologies"`      // keyword search
+	Technologies     []string `json:"technologies"`       // keyword search
 	City             string   `json:"city"`              // text search
-	State            string   `json:"state"`             // text search
+	State            string   `json:"state"`              // text search
 	Country          string   `json:"country"`           // text search
 	LinkedinURL      string   `json:"linkedin_url"`      // text search
-	Website          string   `json:"website"`           // text search
+	Website          string   `json:"website"`            // text search
 	NormalizedDomain string   `json:"normalized_domain"` // text search
 
 	CreatedAt time.Time `json:"created_at"` // date search
 }
 
-func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
+func OpenSearchCompanyFromRawData(company *PgCompany) *OpenSearchCompany {
 	serverTime := time.Now()
-	return &ElasticCompany{
+	return &OpenSearchCompany{
 		UUID:             company.UUID,
 		Name:             company.Name,
 		EmployeesCount:   company.EmployeesCount,
@@ -51,17 +51,17 @@ func ElasticCompanyFromRawData(company *PgCompany) *ElasticCompany {
 	}
 }
 
-type ElasticCompanySearchHit struct {
-	Company ElasticCompany `json:"_source"`
-	Cursor  []string       `json:"sort,omitempty"`
+type OpenSearchCompanySearchHit struct {
+	Company OpenSearchCompany `json:"_source"`
+	Cursor  []string          `json:"sort,omitempty"`
 }
-type ElasticCompanySearchResponse struct {
+type OpenSearchCompanySearchResponse struct {
 	Hits struct {
-		Hits []*ElasticCompanySearchHit `json:"hits"`
+		Hits []*OpenSearchCompanySearchHit `json:"hits"`
 	} `json:"hits"`
 }
 
-func (c *ElasticCompany) SetClient(client *elasticsearch.Client) *ElasticCompany {
+func (c *OpenSearchCompany) SetClient(client *opensearch.Client) *OpenSearchCompany {
 	c.client = client
 	return c
 }

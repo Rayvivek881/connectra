@@ -18,7 +18,7 @@ func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
 	if err := c.ShouldBindJSON(&query); err != nil {
 		return query, err
 	}
-	if err := utilities.ValidateElasticPagination(query.Page, query.Limit); err != nil {
+	if err := utilities.ValidateOpenSearchPagination(query.Page, query.Limit); err != nil {
 		return query, err
 	}
 
@@ -44,9 +44,9 @@ func BindFilterUpdateStatus(c *gin.Context) (FilterStatusUpdate, error) {
 	return statusUpdate, err
 }
 
-func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.ElasticCompany, error) {
+func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.OpenSearchCompany, error) {
 	pgCompanies := make([]*models.PgCompany, 0)
-	esCompanies := make([]*models.ElasticCompany, 0)
+	osCompanies := make([]*models.OpenSearchCompany, 0)
 	err := c.ShouldBindJSON(&pgCompanies)
 	if err != nil {
 		return nil, nil, err
@@ -58,7 +58,7 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgCompany, []*models.Elas
 		if !utilities.IsUuidValid(pgCompany.UUID) {
 			return nil, nil, constants.InvalidUUIDError(pgCompany.UUID)
 		}
-		esCompanies = append(esCompanies, models.ElasticCompanyFromRawData(pgCompany))
+		osCompanies = append(osCompanies, models.OpenSearchCompanyFromRawData(pgCompany))
 	}
-	return pgCompanies, esCompanies, nil
+	return pgCompanies, osCompanies, nil
 }

@@ -11,26 +11,26 @@ import (
 )
 
 type CompanyService struct {
-	companyElasticRepository models.ElasticCompanySvcRepo
-	companyPgRepository      models.PgCompanySvcRepo
-	filtersDataRepository    models.FiltersDataSvcRepo
-	tempFilters              []*models.ModelFilter
+	companyOpenSearchRepository models.OpenSearchCompanySvcRepo
+	companyPgRepository         models.PgCompanySvcRepo
+	filtersDataRepository       models.FiltersDataSvcRepo
+	tempFilters                 []*models.ModelFilter
 }
 
 func NewCompanyService(tempFilters []*models.ModelFilter) CompanySvcRepo {
 	return &CompanyService{
-		companyElasticRepository: models.ElasticCompanyRepository(connections.ElasticsearchConnection.Client),
-		companyPgRepository:      models.PgCompanyRepository(connections.PgDBConnection.Client),
-		filtersDataRepository:    models.FiltersDataRepository(connections.PgDBConnection.Client),
-		tempFilters:              tempFilters,
+		companyOpenSearchRepository: models.OpenSearchCompanyRepository(connections.OpenSearchConnection.Client),
+		companyPgRepository:         models.PgCompanyRepository(connections.PgDBConnection.Client),
+		filtersDataRepository:      models.FiltersDataRepository(connections.PgDBConnection.Client),
+		tempFilters:                 tempFilters,
 	}
 }
 
 type CompanySvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
-	BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) error
-	BulkUpsertToDb(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany, filtersData []*models.ModelFilterData) error
+	BulkUpsert(pgCompanies []*models.PgCompany, osCompanies []*models.OpenSearchCompany) error
+	BulkUpsertToDb(pgCompanies []*models.PgCompany, osCompanies []*models.OpenSearchCompany, filtersData []*models.ModelFilterData) error
 	GetCompanyByUuids(uuids []string, selectColumns []string) ([]*models.PgCompany, error)
 }
 
@@ -40,15 +40,15 @@ func (s *CompanyService) GetCompanyByUuids(uuids []string, selectColumns []strin
 
 func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.CompanyResponse, error) {
 	sourceFields := []string{"uuid"}
-	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
-	esHits, err := s.companyElasticRepository.ListByQueryMap(elasticQuery)
+	osQuery := query.ToOpenSearchQuery(false, sourceFields)
+	osHits, err := s.companyOpenSearchRepository.ListByQueryMap(osQuery)
 	if err != nil {
 		return nil, err
 	}
 	companyUuids, cursors := make([]string, 0), make(map[string][]string)
-	for _, esHit := range esHits {
-		companyUuids = append(companyUuids, esHit.Company.UUID)
-		cursors[esHit.Company.UUID] = esHit.Cursor
+	for _, osHit := range osHits {
+		companyUuids = append(companyUuids, osHit.Company.UUID)
+		cursors[osHit.Company.UUID] = osHit.Cursor
 	}
 	companies, err := s.GetCompanyByUuids(companyUuids, query.SelectColumns)
 	if err != nil {
@@ -58,12 +58,12 @@ func (s *CompanyService) ListByFilters(query utilities.VQLQuery) ([]helper.Compa
 }
 
 func (s *CompanyService) CountByFilters(query utilities.VQLQuery) (int64, error) {
-	elasticQuery := query.ToElasticsearchQuery(true, []string{})
-	return s.companyElasticRepository.CountByQueryMap(elasticQuery)
+	osQuery := query.ToOpenSearchQuery(true, []string{})
+	return s.companyOpenSearchRepository.CountByQueryMap(osQuery)
 }
 
 func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
-	esCompanies []*models.ElasticCompany, filtersData []*models.ModelFilterData) error {
+	osCompanies []*models.OpenSearchCompany, filtersData []*models.ModelFilterData) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var insertionError error
@@ -80,7 +80,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.companyElasticRepository.BulkUpsert(esCompanies); err != nil {
+		if _, err := s.companyOpenSearchRepository.BulkUpsert(osCompanies); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -100,7 +100,7 @@ func (s *CompanyService) BulkUpsertToDb(pgCompanies []*models.PgCompany,
 	return insertionError
 }
 
-func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, esCompanies []*models.ElasticCompany) error {
+func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, osCompanies []*models.OpenSearchCompany) error {
 	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
 
 	for _, company := range pgCompanies {
@@ -123,5 +123,5 @@ func (s *CompanyService) BulkUpsert(pgCompanies []*models.PgCompany, esCompanies
 			})
 		}
 	}
-	return s.BulkUpsertToDb(pgCompanies, esCompanies, filtersData)
+	return s.BulkUpsertToDb(pgCompanies, osCompanies, filtersData)
 }

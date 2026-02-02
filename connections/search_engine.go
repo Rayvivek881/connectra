@@ -5,21 +5,23 @@ import (
 	"vivek-ray/conf"
 )
 
-var ElasticsearchConnection *clients.ElasticsearchConnection
+var OpenSearchConnection *clients.OpenSearchConnection
 
 func InitSearchEngine() {
-	ElasticsearchConnection = clients.NewElasticsearchConnection(&clients.ElasticsearchConfig{
-		User:     conf.SearchEngineConfig.ElasticsearchUser,
-		Password: conf.SearchEngineConfig.ElasticsearchPassword,
-		Host:     conf.SearchEngineConfig.ElasticsearchHost,
-		Port:     conf.SearchEngineConfig.ElasticsearchPort,
-		Debug:    conf.SearchEngineConfig.ElasticsearchDebug,
-		Auth:     conf.SearchEngineConfig.ElasticsearchAuth,
-		SSL:      conf.SearchEngineConfig.ElasticsearchSSL,
+	OpenSearchConnection = clients.NewOpenSearchConnection(&clients.OpenSearchConfig{
+		User:     conf.SearchEngineConfig.OpenSearchUser,
+		Password: conf.SearchEngineConfig.OpenSearchPassword,
+		Host:     conf.SearchEngineConfig.OpenSearchHost,
+		Port:     conf.SearchEngineConfig.OpenSearchPort,
+		Debug:    conf.SearchEngineConfig.OpenSearchDebug,
+		Auth:     conf.SearchEngineConfig.OpenSearchAuth,
+		SSL:      conf.SearchEngineConfig.OpenSearchSSL,
 	})
-	ElasticsearchConnection.Open()
+	OpenSearchConnection.Open()
 }
 
 func CloseSearchEngine() {
-	ElasticsearchConnection.Close()
+	if OpenSearchConnection != nil {
+		OpenSearchConnection.Close()
+	}
 }

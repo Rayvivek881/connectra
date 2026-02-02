@@ -41,7 +41,7 @@ func GetCompaniesCountByFilter(c *gin.Context) {
 }
 
 func BatchUpsert(c *gin.Context) {
-	pgCompanies, esCompanies, err := helper.BindBatchUpsertRequest(c)
+	pgCompanies, osCompanies, err := helper.BindBatchUpsertRequest(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
@@ -51,6 +51,6 @@ func BatchUpsert(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-	service.NewCompanyService(tempFilters).BulkUpsert(pgCompanies, esCompanies)
+	service.NewCompanyService(tempFilters).BulkUpsert(pgCompanies, osCompanies)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

@@ -23,7 +23,7 @@ var (
 	InvalidServiceError     = errors.New("ERR_UNKNOWN_SERVICE: the provided service identifier is not recognized; use 'contacts' or 'companies'")
 	InvalidServiceTypeError = errors.New("ERR_UNSUPPORTED_SERVICE: the specified service type is not supported for this operation; verify the endpoint and try again")
 
-	JobNotFoundError    = errors.New("ERR_JOB_NOT_FOUND: the requested job does not exist; verify the job UUID and try again")
+	JobNotFoundError     = errors.New("ERR_JOB_NOT_FOUND: the requested job does not exist; verify the job UUID and try again")
 	JobUuidRequiredError = errors.New("ERR_JOB_UUID_REQUIRED: 'job_uuid' path parameter is required; provide a valid job UUID")
 
 	FilenameRequiredError            = errors.New("ERR_FILENAME_REQUIRED: 'filename' query parameter is required; provide a valid filename")
@@ -35,6 +35,8 @@ var (
 
 	RateLimitExceededError = errors.New("ERR_RATE_LIMIT_EXCEEDED: too many requests; please try again later")
 	UnauthorizedError      = errors.New("ERR_UNAUTHORIZED: invalid or missing API key; provide a valid 'X-API-Key' header")
+
+	OpenSearchNotConnectedError = errors.New("ERR_OPENSEARCH_NOT_CONNECTED: search engine is not connected; check OpenSearch is running and configuration")
 )
 
 func InvalidJobTypeError(jobType string) error {
@@ -45,10 +47,10 @@ func InvalidUUIDError(uuid string) error {
 	return fmt.Errorf("ERR_INVALID_UUID: '%s' is not a valid UUID format; use a valid UUID like 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'", uuid)
 }
 
-func ElasticsearchError(statusCode int, body string) error {
-	return fmt.Errorf("ERR_ELASTICSEARCH_FAILURE: search engine returned status %d; details: %s", statusCode, body)
+func OpenSearchError(statusCode int, body string) error {
+	return fmt.Errorf("ERR_OPENSEARCH_FAILURE: search engine returned status %d; details: %s", statusCode, body)
 }
 
-func ElasticsearchBulkError(statusCode int, body string) error {
-	return fmt.Errorf("ERR_ELASTICSEARCH_BULK_FAILURE: bulk indexing operation returned status %d; details: %s", statusCode, body)
+func OpenSearchBulkError(statusCode int, body string) error {
+	return fmt.Errorf("ERR_OPENSEARCH_BULK_FAILURE: bulk indexing operation returned status %d; details: %s", statusCode, body)
 }

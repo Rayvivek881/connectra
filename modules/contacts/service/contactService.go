@@ -11,43 +11,43 @@ import (
 )
 
 type ContactService struct {
-	contactElasticRepository models.ElasticContactSvcRepo
-	contactPgRepository      models.PgContactSvcRepo
-	companyPgRepository      models.PgCompanySvcRepo
-	filtersDataRepository    models.FiltersDataSvcRepo
-	tempFilters              []*models.ModelFilter
+	contactOpenSearchRepository models.OpenSearchContactSvcRepo
+	contactPgRepository         models.PgContactSvcRepo
+	companyPgRepository         models.PgCompanySvcRepo
+	filtersDataRepository       models.FiltersDataSvcRepo
+	tempFilters                 []*models.ModelFilter
 }
 
 func NewContactService(tempFilters []*models.ModelFilter) ContactSvcRepo {
 	return &ContactService{
-		contactElasticRepository: models.ElasticContactRepository(connections.ElasticsearchConnection.Client),
-		contactPgRepository:      models.PgContactRepository(connections.PgDBConnection.Client),
-		companyPgRepository:      models.PgCompanyRepository(connections.PgDBConnection.Client),
-		filtersDataRepository:    models.FiltersDataRepository(connections.PgDBConnection.Client),
-		tempFilters:              tempFilters,
+		contactOpenSearchRepository: models.OpenSearchContactRepository(connections.OpenSearchConnection.Client),
+		contactPgRepository:         models.PgContactRepository(connections.PgDBConnection.Client),
+		companyPgRepository:         models.PgCompanyRepository(connections.PgDBConnection.Client),
+		filtersDataRepository:       models.FiltersDataRepository(connections.PgDBConnection.Client),
+		tempFilters:                 tempFilters,
 	}
 }
 
 type ContactSvcRepo interface {
 	ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error)
 	CountByFilters(query utilities.VQLQuery) (int64, error)
-	BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error
-	BulkUpsertToDb(pgContacts []*models.PgContact, esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error
+	BulkUpsert(pgContacts []*models.PgContact, osContacts []*models.OpenSearchContact) error
+	BulkUpsertToDb(pgContacts []*models.PgContact, osContacts []*models.OpenSearchContact, filtersData []*models.ModelFilterData) error
 }
 
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
 	sourceFields := []string{"uuid", "company_id"}
-	elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
-	esHits, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
+	osQuery := query.ToOpenSearchQuery(false, sourceFields)
+	osHits, err := s.contactOpenSearchRepository.ListByQueryMap(osQuery)
 	if err != nil {
 		return nil, err
 	}
 	contactResponses, contactUuids, companyIds := make([]helper.ContactResponse, 0), make([]string, 0), make([]string, 0)
 	cursors := make(map[string][]string)
-	for _, esHit := range esHits {
-		contactUuids = append(contactUuids, esHit.Contact.UUID)
-		cursors[esHit.Contact.UUID] = esHit.Cursor
-		companyIds = append(companyIds, esHit.Contact.CompanyID)
+	for _, osHit := range osHits {
+		contactUuids = append(contactUuids, osHit.Contact.UUID)
+		cursors[osHit.Contact.UUID] = osHit.Cursor
+		companyIds = append(companyIds, osHit.Contact.CompanyID)
 	}
 	if len(query.SelectColumns) != 0 {
 		query.SelectColumns = append(query.SelectColumns, "company_id")
@@ -113,12 +113,12 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 }
 
 func (s *ContactService) CountByFilters(query utilities.VQLQuery) (int64, error) {
-	elasticQuery := query.ToElasticsearchQuery(true, []string{})
-	return s.contactElasticRepository.CountByQueryMap(elasticQuery)
+	osQuery := query.ToOpenSearchQuery(true, []string{})
+	return s.contactOpenSearchRepository.CountByQueryMap(osQuery)
 }
 
 func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
-	esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error {
+	osContacts []*models.OpenSearchContact, filtersData []*models.ModelFilterData) error {
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -136,7 +136,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.contactElasticRepository.BulkUpsert(esContacts); err != nil {
+		if _, err := s.contactOpenSearchRepository.BulkUpsert(osContacts); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -156,7 +156,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 	return insertionError
 }
 
-func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts []*models.ElasticContact) error {
+func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, osContacts []*models.OpenSearchContact) error {
 	insertedFilters, filtersData := make(map[string]struct{}), make([]*models.ModelFilterData, 0)
 
 	for _, contact := range pgContacts {
@@ -184,5 +184,5 @@ func (s *ContactService) BulkUpsert(pgContacts []*models.PgContact, esContacts [
 			}
 		}
 	}
-	return s.BulkUpsertToDb(pgContacts, esContacts, filtersData)
+	return s.BulkUpsertToDb(pgContacts, osContacts, filtersData)
 }

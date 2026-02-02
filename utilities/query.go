@@ -6,7 +6,7 @@ import (
 )
 
 func (q *VQLQuery) isEmpty() bool {
-	queries := []ElasticQuery{
+	queries := []OpenSearchQuery{
 		q.Where.RangeQuery,
 		q.Where.KeywordMatch,
 	}
@@ -184,7 +184,7 @@ func (q *VQLQuery) addSort(resultQuery map[string]any) {
 	}
 }
 
-func (q *VQLQuery) ToElasticsearchQuery(forCount bool, sourceFields []string) map[string]any {
+func (q *VQLQuery) ToOpenSearchQuery(forCount bool, sourceFields []string) map[string]any {
 	resultQuery := make(map[string]any)
 	if !forCount {
 		resultQuery["_source"] = sourceFields

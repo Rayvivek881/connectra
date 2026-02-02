@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.24-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Version"/>
-  <img src="https://img.shields.io/badge/Elasticsearch-8.x-005571?style=for-the-badge&logo=elasticsearch&logoColor=white" alt="Elasticsearch"/>
+  <img src="https://img.shields.io/badge/OpenSearch-8.x-005571?style=for-the-badge&logo=opensearch&logoColor=white" alt="OpenSearch"/>
   <img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/AWS_S3-232F3E?style=for-the-badge&logo=amazons3&logoColor=white" alt="AWS S3"/>
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
@@ -17,11 +17,11 @@
 
 | Metric | Implementation |
 |--------|---------------|
-| **Concurrent Writes** | 5 parallel stores (2× PostgreSQL, 2× Elasticsearch, 1× Filters) via goroutines + WaitGroup |
-| **Custom DSL** | VQL (Vivek Query Language) → Elasticsearch bool query compiler with 3 search modes |
+| **Concurrent Writes** | 5 parallel stores (2× PostgreSQL, 2× OpenSearch, 1× Filters) via goroutines + WaitGroup |
+| **Custom DSL** | VQL (Vivek Query Language) → OpenSearch bool query compiler with 3 search modes |
 | **Job Processing** | Channel-based worker pool with backpressure, graceful shutdown, and retry mechanism |
 | **Memory Efficiency** | Streaming CSV processing via `io.Pipe()` for multi-GB file import/export |
-| **Connection Pooling** | PostgreSQL (40 max/20 idle), Elasticsearch (custom HTTP transport) |
+| **Connection Pooling** | PostgreSQL (40 max/20 idle), OpenSearch (custom HTTP transport) |
 | **Rate Limiting** | Token bucket algorithm with `sync.Mutex` + `sync.Once` singleton pattern |
 
 <p align="center">
@@ -76,7 +76,7 @@
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  DATA LAYER                                                                 │
-│    PostgreSQL (Bun ORM)    Elasticsearch 8.x       AWS S3                   │
+│    PostgreSQL (Bun ORM)    OpenSearch 8.x       AWS S3                   │
 │    • Source of truth       • Full-text search      • CSV Import/Export      │
 │    • UPSERT, Pool:40/20    • Fuzzy, N-gram         • Streaming io.Pipe      │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -96,7 +96,7 @@
 | **Language** | Go 1.24 | Native concurrency (goroutines), zero-cost abstractions, fast compilation, single binary deployment | Rust (steeper learning curve), Java (JVM overhead) |
 | **Web Framework** | Gin | Fastest Go HTTP framework (40k req/s benchmark), extensive middleware ecosystem, zero allocation router | Echo, Fiber (less mature ecosystem) |
 | **Primary DB** | PostgreSQL + Bun ORM | ACID compliance for source of truth, type-safe queries, excellent connection pooling, UPSERT support | GORM (reflection-heavy), raw SQL (error-prone) |
-| **Search Engine** | Elasticsearch 8.x | Distributed full-text search, fuzzy matching, aggregations, horizontal scaling | Meilisearch (less mature), Algolia (costly) |
+| **Search Engine** | OpenSearch 8.x | Distributed full-text search, fuzzy matching, aggregations, horizontal scaling | Meilisearch (less mature), Algolia (costly) |
 | **Object Storage** | AWS S3 SDK v2 | Industry standard, presigned URLs for direct uploads, streaming support | MinIO (self-hosted alternative) |
 | **Configuration** | Viper | Multi-source config (env, files), hot reload, structured config with reflection | godotenv (limited features) |
 | **CLI Framework** | Cobra | Subcommand architecture for different run modes (server, jobs), flag parsing | urfave/cli (less powerful) |
@@ -108,21 +108,21 @@
 
 ### 1. Concurrent Multi-Store Writes with Thread-Safe Error Aggregation
 
-**Problem:** Insert data into 5 different stores (2 PostgreSQL tables, 2 Elasticsearch indices, 1 filters table) efficiently.
+**Problem:** Insert data into 5 different stores (2 PostgreSQL tables, 2 OpenSearch indices, 1 filters table) efficiently.
 
 **Solution:** Parallel goroutines with mutex-protected error collection:
 
 ```go
 // batchInsertService.go - Demonstrating concurrent writes to multiple stores
 func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgContacts []*models.PgContact,
-    esCompanies []*models.ElasticCompany, esContacts []*models.ElasticContact) error {
+    osCompanies []*models.OpenSearchCompany, osContacts []*models.OpenSearchContact) error {
 
     var wg sync.WaitGroup
     var mu sync.Mutex
     var insertionError error
     wg.Add(2) // Companies and Contacts in parallel
 
-    // Goroutine 1: Company data (PostgreSQL + Elasticsearch in parallel)
+    // Goroutine 1: Company data (PostgreSQL + OpenSearch in parallel)
     go func() {
         defer wg.Done()
         if err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
@@ -132,7 +132,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
         }
     }()
 
-    // Goroutine 2: Contact data (PostgreSQL + Elasticsearch in parallel)
+    // Goroutine 2: Contact data (PostgreSQL + OpenSearch in parallel)
     go func() {
         defer wg.Done()
         if err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
@@ -151,12 +151,12 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 ```go
 // contactService.go - 3 parallel writes within a single service call
 func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
-    esContacts []*models.ElasticContact, filtersData []*models.ModelFilterData) error {
+    osContacts []*models.OpenSearchContact, filtersData []*models.ModelFilterData) error {
 
     var wg sync.WaitGroup
     var mu sync.Mutex
     var insertionError error
-    wg.Add(3) // PostgreSQL, Elasticsearch, and FiltersData in parallel
+    wg.Add(3) // PostgreSQL, OpenSearch, and FiltersData in parallel
 
     go func() {
         defer wg.Done()
@@ -169,7 +169,7 @@ func (s *ContactService) BulkUpsertToDb(pgContacts []*models.PgContact,
 
     go func() {
         defer wg.Done()
-        if _, err := s.contactElasticRepository.BulkUpsert(esContacts); err != nil {
+        if _, err := s.contactOpenSearchRepository.BulkUpsert(esContacts); err != nil {
             mu.Lock()
             insertionError = err
             mu.Unlock()
@@ -380,17 +380,17 @@ func startServer() {
 ```go
 // contactService.go - Demonstrating advanced concurrent fetch pattern
 func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.ContactResponse, error) {
-    // Phase 1: Get IDs from Elasticsearch (fast search)
+    // Phase 1: Get IDs from OpenSearch (fast search)
     sourceFields := []string{"id", "company_id"}
-    elasticQuery := query.ToElasticsearchQuery(false, sourceFields)
-    elasticContacts, err := s.contactElasticRepository.ListByQueryMap(elasticQuery)
+    osQuery := query.ToOpenSearchQuery(false, sourceFields)
+    osContacts, err := s.contactOpenSearchRepository.ListByQueryMap(osQuery)
     if err != nil {
         return nil, err
     }
 
     // Extract IDs for PostgreSQL lookup
     contactUuids, companyIds := make([]string, 0), make([]string, 0)
-    for _, contact := range elasticContacts {
+    for _, contact := range osContacts {
         contactUuids = append(contactUuids, contact.Id)
         companyIds = append(companyIds, contact.CompanyID)
     }
@@ -468,7 +468,7 @@ func (s *ContactService) ListByFilters(query utilities.VQLQuery) ([]helper.Conta
 
 ### VQL (Vivek Query Language) - A DSL for Search
 
-VQL abstracts complex Elasticsearch DSL into a clean, frontend-friendly JSON interface:
+VQL abstracts complex OpenSearch DSL into a clean, frontend-friendly JSON interface:
 
 ### Query Structure
 
@@ -522,19 +522,19 @@ VQL abstracts complex Elasticsearch DSL into a clean, frontend-friendly JSON int
 }
 ```
 
-### Search Types & Elasticsearch Mapping
+### Search Types & OpenSearch Mapping
 
-| VQL Search Type | Elasticsearch Query | Use Case | Example |
+| VQL Search Type | OpenSearch Query | Use Case | Example |
 |-----------------|-------------------|----------|---------|
 | `exact` | `match_phrase` with slop | Exact phrase matching | "Senior Engineer" finds "Senior Software Engineer" |
 | `shuffle` | `match` with operator | Multi-word, order doesn't matter | "Engineer Senior" matches "Senior Engineer" |
 | `substring` | N-gram `.ngram` field | Partial text matching | "Eng" → "Engineer", "Engineering" |
 
-### VQL to Elasticsearch Translation Engine
+### VQL to OpenSearch Translation Engine
 
 ```go
 // query.go - The VQL compiler
-func (q *VQLQuery) ToElasticsearchQuery(forCount bool, sourceFields []string) map[string]any {
+func (q *VQLQuery) ToOpenSearchQuery(forCount bool, sourceFields []string) map[string]any {
     resultQuery := make(map[string]any)
     
     if !forCount {
@@ -616,7 +616,7 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 }
 ```
 
-### Elasticsearch Index Design (N-gram for Substring Search)
+### OpenSearch Index Design (N-gram for Substring Search)
 
 ```json
 {
@@ -663,7 +663,7 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 
 ### Why Hybrid? Trade-off Analysis
 
-| Concern | Elasticsearch | PostgreSQL | Hybrid Solution |
+| Concern | OpenSearch | PostgreSQL | Hybrid Solution |
 |---------|--------------|------------|-----------------|
 | **Full-text search** | ✅ Optimized, O(log n) | ❌ LIKE is O(n) | Use ES for search |
 | **Fuzzy matching** | ✅ Built-in (Levenshtein) | ❌ Not available | Use ES |
@@ -676,9 +676,9 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  PHASE 1: SEARCH (Elasticsearch)                                            │
+│  PHASE 1: SEARCH (OpenSearch)                                            │
 │                                                                             │
-│  VQL Query → ToElasticsearchQuery() → { "query": {...}, "_source": ["id"] } │
+│  VQL Query → ToOpenSearchQuery() → { "query": {...}, "_source": ["id"] } │
 │                                                     ↓                       │
 │                                          [ uuid1, uuid2, uuid3, ... ]       │
 └───────────────────────────────────────────────────┬─────────────────────────┘
@@ -716,7 +716,7 @@ func buildTextQueries(conditions []TextMatchStruct, isMust bool) []map[string]an
 
 | Job Type | Constant | Description | Data Flow |
 |----------|----------|-------------|-----------|
-| **Insert CSV** | `insert_csv_file` | Import CSV data from S3 to PostgreSQL + Elasticsearch | S3 → Streaming Reader → Batch Upsert → DB |
+| **Insert CSV** | `insert_csv_file` | Import CSV data from S3 to PostgreSQL + OpenSearch | S3 → Streaming Reader → Batch Upsert → DB |
 | **Export CSV** | `export_csv_file` | Export filtered data from DB to S3 as CSV | DB Query → Streaming Writer → S3 |
 
 ### Runner Modes
@@ -915,8 +915,8 @@ func (c *PgsqlConnection) Open() {
     sqldb.SetConnMaxIdleTime(30 * time.Minute)  // Idle connection timeout
 }
 
-// elastic_search.go - Elasticsearch HTTP transport tuning
-cfg := elasticsearch.Config{
+// open_search.go - OpenSearch HTTP transport tuning
+cfg := opensearch.Config{
     Transport: &http.Transport{
         MaxIdleConns:        20,      // Global idle connections
         MaxIdleConnsPerHost: 5,       // Per-host idle connections
@@ -948,8 +948,8 @@ func (t *PgContactStruct) BulkUpsert(contacts []*PgContact) (int64, error) {
     return int64(len(contacts)), err
 }
 
-// contact.elastic.repo.go - Elasticsearch bulk API
-func (t *ElasticContactStruct) BulkUpsert(contacts []*ElasticContact) (int64, error) {
+// contact.opensearch.repo.go - OpenSearch bulk API
+func (t *OpenSearchContactStruct) BulkUpsert(contacts []*OpenSearchContact) (int64, error) {
     var buf bytes.Buffer
     for _, contact := range contacts {
         meta := map[string]any{
@@ -962,7 +962,7 @@ func (t *ElasticContactStruct) BulkUpsert(contacts []*ElasticContact) (int64, er
         utilities.AddToBuffer(&buf, contact)
     }
 
-    response, err := t.ElasticClient.Bulk(bytes.NewReader(buf.Bytes()))
+    response, err := t.OpenSearchClient.Bulk(bytes.NewReader(buf.Bytes()))
     // ... error handling ...
     return int64(len(contacts)), nil
 }
@@ -1009,7 +1009,7 @@ Controller (HTTP)  →  Service (Business Logic)  →  Repository (Data Access)
      │                        │                            │
      ▼                        ▼                            ▼
  • Binding              • Concurrency              • PostgreSQL queries
- • Validation           • Orchestration            • Elasticsearch ops
+ • Validation           • Orchestration            • OpenSearch ops
  • Response format      • Data transform           • Interface-based
 ```
 
@@ -1052,7 +1052,7 @@ type ContactService struct {
 
 | Decision | Trade-off | Why This Choice |
 |----------|-----------|-----------------|
-| **Hybrid DB (PostgreSQL + Elasticsearch)** | Increased complexity, eventual consistency | PostgreSQL for ACID source-of-truth, Elasticsearch for sub-ms full-text search |
+| **Hybrid DB (PostgreSQL + OpenSearch)** | Increased complexity, eventual consistency | PostgreSQL for ACID source-of-truth, OpenSearch for sub-ms full-text search |
 | **Two-phase query (ES IDs → PG data)** | Extra round-trip latency | Minimal ES payload (~95% reduction), rich PostgreSQL data with field projection |
 | **Channel-based job queue** | In-memory (lost on crash) | PostgreSQL persists job state; channel is just distribution layer |
 | **Buffered channels (1000)** | Memory usage vs throughput | Backpressure prevents OOM; configurable via env |
@@ -1088,7 +1088,7 @@ type ContactService struct {
         Jobs pulled with status lock (IN_QUEUE prevents double-processing)
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  PostgreSQL (Primary+Replicas)  │  Elasticsearch (6 shards)  │  AWS S3     │
+│  PostgreSQL (Primary+Replicas)  │  OpenSearch (6 shards)  │  AWS S3     │
 │  Pool: 40 max, 20 idle          │  Horizontal scaling        │  Streaming  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1141,11 +1141,11 @@ func ValidatePageSize(limit int) error {
     return nil
 }
 
-func ValidateElasticPagination(page, limit int) error {
+func ValidateOpenSearchPagination(page, limit int) error {
     if limit > constants.MaxPageSize {
         return constants.PageSizeExceededError
     }
-    if page > constants.MaxElasticPageNumber {
+    if page > constants.MaxOpenSearchPageNumber {
         return constants.PageNumberExceededError
     }
     return nil
@@ -1265,11 +1265,11 @@ connectra/
 ├── connections/                      # Database & service connections (singletons)
 │   ├── database.go                   # PostgreSQL connection pool
 │   ├── s3_connection.go              # AWS S3 client
-│   └── search_engine.go              # Elasticsearch client
+│   └── search_engine.go              # OpenSearch client
 │
 ├── clients/                          # Low-level client implementations
 │   ├── pgsql.go                      # PostgreSQL with Bun ORM, connection pooling
-│   ├── elastic_search.go             # Elasticsearch with custom HTTP transport
+│   ├── open_search.go             # OpenSearch with custom HTTP transport
 │   ├── s3.go                         # AWS S3 with presigned URLs, streaming
 │   └── mongo.go                      # MongoDB client (extensible)
 │
@@ -1280,12 +1280,12 @@ connectra/
 ├── models/                           # Data models & repositories
 │   ├── contact.pgsql.go              # PostgreSQL contact model
 │   ├── contact.pgsql.repo.go         # Contact repository (interface + impl)
-│   ├── contact.elastic.go            # Elasticsearch contact model
-│   ├── contact.elastic.repo.go       # Elasticsearch contact repository
+│   ├── contact.opensearch.go            # OpenSearch contact model
+│   ├── contact.opensearch.repo.go       # OpenSearch contact repository
 │   ├── company.pgsql.go              # PostgreSQL company model
 │   ├── company.pgsql.repo.go         # Company repository
-│   ├── company.elastic.go            # Elasticsearch company model
-│   ├── company.elastic.repo.go       # Elasticsearch company repository
+│   ├── company.opensearch.go            # OpenSearch company model
+│   ├── company.opensearch.repo.go       # OpenSearch company repository
 │   ├── jobs.go                       # Job model (JSONB data, retry logic)
 │   ├── jobs.repo.go                  # Job repository
 │   ├── filters.go                    # Filter configuration model
@@ -1334,19 +1334,19 @@ connectra/
 │   └── s3_files.go                   # CSV import/export processing functions
 │
 ├── utilities/                        # Shared utilities
-│   ├── query.go                      # VQL to Elasticsearch converter
+│   ├── query.go                      # VQL to OpenSearch converter
 │   ├── structures.go                 # VQL type definitions
 │   └── common.go                     # Helper functions (UUID5, reflection)
 │
 ├── constants/                        # Application constants
-│   ├── elastic_search.go             # ES index names, search types
+│   ├── open_search.go             # ES index names, search types
 │   ├── errors_message.go             # Typed error definitions
 │   ├── jobs.go                       # Job states and types
 │   └── services.go                   # Service identifiers
 │
 ├── examples/                         # Example configurations & docs
-│   ├── company_index_create.json     # Elasticsearch company index mapping
-│   ├── contact_index_create.json     # Elasticsearch contact index mapping
+│   ├── company_index_create.json     # OpenSearch company index mapping
+│   ├── contact_index_create.json     # OpenSearch contact index mapping
 │   ├── vql_query_input.json          # Example VQL query
 │   └── docker_creation.txt           # Docker setup notes
 │
@@ -1364,7 +1364,7 @@ connectra/
 
 - Go 1.24+
 - PostgreSQL 15+
-- Elasticsearch 8.x
+- OpenSearch 8.x
 - AWS S3 (or MinIO for local development)
 - Docker (optional)
 
@@ -1385,14 +1385,14 @@ PG_DB_PASSWORD=password
 PG_DB_SSL=false
 PG_DB_DEBUG=true
 
-# Elasticsearch
-ELASTICSEARCH_HOST=localhost
-ELASTICSEARCH_PORT=9200
-ELASTICSEARCH_USERNAME=elastic
-ELASTICSEARCH_PASSWORD=password
-ELASTICSEARCH_SSL=false
-ELASTICSEARCH_AUTH=true
-ELASTICSEARCH_DEBUG=false
+# OpenSearch
+OPEN_SEARCH_HOST=localhost
+OPEN_SEARCH_PORT=9200
+OPEN_SEARCH_USERNAME=admin
+OPEN_SEARCH_PASSWORD=password
+OPEN_SEARCH_SSL=false
+OPEN_SEARCH_AUTH=true
+OPEN_SEARCH_DEBUG=false
 
 # AWS S3
 S3_ACCESS_KEY=your-access-key
@@ -1462,7 +1462,7 @@ docker run -d \
   connectra:latest
 ```
 
-### Creating Elasticsearch Indices
+### Creating OpenSearch Indices
 
 ```bash
 # Create contacts index
@@ -1484,7 +1484,7 @@ curl -X PUT "localhost:9200/companies_index" \
 |----------|--------|
 | **Go Expertise** | Goroutines, channels, sync primitives (WaitGroup, Mutex, Once), context propagation |
 | **System Design** | CQRS-inspired hybrid architecture, distributed job processing, horizontal scaling |
-| **Database** | PostgreSQL optimization (connection pooling, UPSERT), Elasticsearch (bool queries, N-gram) |
+| **Database** | PostgreSQL optimization (connection pooling, UPSERT), OpenSearch (bool queries, N-gram) |
 | **API Design** | RESTful patterns, custom DSL (VQL), middleware chains, rate limiting |
 | **DevOps** | Docker multi-stage builds, graceful shutdown (SIGTERM), environment configuration |
 | **Patterns** | Repository, Factory, Strategy, Singleton, Worker Pool, Producer-Consumer |
@@ -1498,5 +1498,5 @@ MIT License
 ---
 
 <p align="center">
-  <strong>Go • Elasticsearch • PostgreSQL • AWS S3 • Docker • Clean Architecture</strong>
+  <strong>Go • OpenSearch • PostgreSQL • AWS S3 • Docker • Clean Architecture</strong>
 </p>

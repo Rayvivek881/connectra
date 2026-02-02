@@ -1,6 +1,6 @@
 package utilities
 
-type ElasticCount struct {
+type OpenSearchCount struct {
 	Count int64 `json:"count"`
 }
 
@@ -18,7 +18,7 @@ type TextMatchStruct struct {
 	Fuzzy      bool   `json:"fuzzy,omitempty"`
 }
 
-type ElasticQuery struct {
+type OpenSearchQuery struct {
 	Must    map[string]any `json:"must,omitempty"`
 	MustNot map[string]any `json:"must_not,omitempty"`
 }
@@ -29,9 +29,9 @@ type TextMatchQuery struct {
 }
 
 type WhereStruct struct {
-	TextMatch    TextMatchQuery `json:"text_matches"`
-	KeywordMatch ElasticQuery   `json:"keyword_match"`
-	RangeQuery   ElasticQuery   `json:"range_query"`
+	TextMatch    TextMatchQuery   `json:"text_matches"`
+	KeywordMatch OpenSearchQuery `json:"keyword_match"`
+	RangeQuery   OpenSearchQuery `json:"range_query"`
 }
 
 type CompanyConfig struct {

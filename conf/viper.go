@@ -36,14 +36,14 @@ type database struct {
 }
 
 type searchEngine struct {
-	ElasticsearchConnection string `mapstructure:"ELASTICSEARCH_CONNECTION"`
-	ElasticsearchHost       string `mapstructure:"ELASTICSEARCH_HOST"`
-	ElasticsearchPort       string `mapstructure:"ELASTICSEARCH_PORT"`
-	ElasticsearchUser       string `mapstructure:"ELASTICSEARCH_USERNAME"`
-	ElasticsearchPassword   string `mapstructure:"ELASTICSEARCH_PASSWORD"`
-	ElasticsearchDebug      bool   `mapstructure:"ELASTICSEARCH_DEBUG"`
-	ElasticsearchSSL        bool   `mapstructure:"ELASTICSEARCH_SSL"`
-	ElasticsearchAuth       bool   `mapstructure:"ELASTICSEARCH_AUTH"`
+	OpenSearchConnection string `mapstructure:"OPEN_SEARCH_CONNECTION"`
+	OpenSearchHost       string `mapstructure:"OPEN_SEARCH_HOST"`
+	OpenSearchPort       string `mapstructure:"OPEN_SEARCH_PORT"`
+	OpenSearchUser       string `mapstructure:"OPEN_SEARCH_USERNAME"`
+	OpenSearchPassword   string `mapstructure:"OPEN_SEARCH_PASSWORD"`
+	OpenSearchDebug      bool   `mapstructure:"OPEN_SEARCH_DEBUG"`
+	OpenSearchSSL        bool   `mapstructure:"OPEN_SEARCH_SSL"`
+	OpenSearchAuth       bool   `mapstructure:"OPEN_SEARCH_AUTH"`
 }
 
 type s3Storage struct {

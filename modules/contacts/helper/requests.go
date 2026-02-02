@@ -19,7 +19,7 @@ func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
 	if err := c.ShouldBindJSON(&query); err != nil {
 		return query, err
 	}
-	if err := utilities.ValidateElasticPagination(query.Page, query.Limit); err != nil {
+	if err := utilities.ValidateOpenSearchPagination(query.Page, query.Limit); err != nil {
 		return query, err
 	}
 	return query, nil
@@ -44,9 +44,9 @@ func BindFilterUpdateStatus(c *gin.Context) (FilterStatusUpdate, error) {
 	return statusUpdate, err
 }
 
-func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.ElasticContact, error) {
+func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.OpenSearchContact, error) {
 	pgContacts := make([]*models.PgContact, 0)
-	esContacts, companyUuids := make([]*models.ElasticContact, 0), make([]string, 0)
+	osContacts, companyUuids := make([]*models.OpenSearchContact, 0), make([]string, 0)
 	err := c.ShouldBindJSON(&pgContacts)
 	if err != nil {
 		return nil, nil, err
@@ -76,7 +76,7 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.Elas
 		if companyData, ok := companyMap[contact.CompanyID]; ok {
 			company = companyData
 		}
-		esContacts = append(esContacts, models.ElasticContactFromRawData(contact, company))
+		osContacts = append(osContacts, models.OpenSearchContactFromRawData(contact, company))
 	}
-	return pgContacts, esContacts, nil
+	return pgContacts, osContacts, nil
 }
