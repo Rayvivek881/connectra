@@ -40,7 +40,8 @@ var (
 	RateLimitExceededError = errors.New("ERR_RATE_LIMIT_EXCEEDED: too many requests; please try again later")
 	UnauthorizedError      = errors.New("ERR_UNAUTHORIZED: invalid or missing API key; provide a valid 'X-API-Key' header")
 
-	ErrInvalidDAG = errors.New("ERR_INVALID_DAG: the provided graph is not a valid DAG; ensure there are no cycles and all node references are valid")
+	ErrInvalidDAG                 = errors.New("ERR_INVALID_DAG: the provided graph is not a valid DAG; ensure there are no cycles and all node references are valid")
+	OpenSearchNotConnectedError   = errors.New("ERR_OPENSEARCH_NOT_CONNECTED: search engine is not connected; check OpenSearch is running and configuration")
 )
 
 func InvalidJobTypeError(jobType string) error {
@@ -51,12 +52,12 @@ func InvalidUUIDError(uuid string) error {
 	return fmt.Errorf("ERR_INVALID_UUID: '%s' is not a valid UUID format; use a valid UUID like 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'", uuid)
 }
 
-func ElasticsearchError(statusCode int, body string) error {
-	return fmt.Errorf("ERR_ELASTICSEARCH_FAILURE: search engine returned status %d; details: %s", statusCode, body)
+func OpenSearchError(statusCode int, body string) error {
+	return fmt.Errorf("ERR_OPENSEARCH_FAILURE: search engine returned status %d; details: %s", statusCode, body)
 }
 
-func ElasticsearchBulkError(statusCode int, body string) error {
-	return fmt.Errorf("ERR_ELASTICSEARCH_BULK_FAILURE: bulk indexing operation returned status %d; details: %s", statusCode, body)
+func OpenSearchBulkError(statusCode int, body string) error {
+	return fmt.Errorf("ERR_OPENSEARCH_BULK_FAILURE: bulk indexing operation returned status %d; details: %s", statusCode, body)
 }
 
 func ErrorWrap(baseErr, wrappedErr error) error {

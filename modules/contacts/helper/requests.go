@@ -22,7 +22,7 @@ func BindAndValidateVQLQuery(c *gin.Context) (utilities.VQLQuery, error) {
 	if err := c.ShouldBindJSON(&query); err != nil {
 		return query, err
 	}
-	if err := utilities.ValidateElasticPagination(query.Page, query.Limit); err != nil {
+	if err := utilities.ValidateOpenSearchPagination(query.Page, query.Limit); err != nil {
 		return query, err
 	}
 	return query, nil
@@ -103,7 +103,7 @@ func cleanStringSlice(slice []string) []string {
 	return cleaned
 }
 
-func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.ElasticContact, error) {
+func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.OpenSearchContact, error) {
 	var rawContacts []*models.PgContact
 	if err := c.ShouldBindJSON(&rawContacts); err != nil {
 		return nil, nil, err
@@ -134,7 +134,7 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.Elas
 	}
 
 	pgContacts := make([]*models.PgContact, 0, len(rawContacts))
-	esContacts := make([]*models.ElasticContact, 0, len(rawContacts))
+	osContacts := make([]*models.OpenSearchContact, 0, len(rawContacts))
 
 	for _, contact := range rawContacts {
 		cleanedContact := CleanContactData(contact)
@@ -144,8 +144,8 @@ func BindBatchUpsertRequest(c *gin.Context) ([]*models.PgContact, []*models.Elas
 		if companyData, ok := companyMap[cleanedContact.CompanyID]; ok {
 			company = companyData
 		}
-		esContacts = append(esContacts, models.ElasticContactFromRawData(cleanedContact, company))
+		osContacts = append(osContacts, models.OpenSearchContactFromRawData(cleanedContact, company))
 	}
 
-	return pgContacts, esContacts, nil
+	return pgContacts, osContacts, nil
 }

@@ -10,13 +10,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.6
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.18
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.95.0
-	github.com/elastic/elastic-transport-go/v8 v8.6.0
-	github.com/elastic/go-elasticsearch/v8 v8.15.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.3
+	github.com/opensearch-project/opensearch-go/v2 v2.3.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0

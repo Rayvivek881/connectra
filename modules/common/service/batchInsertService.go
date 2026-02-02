@@ -34,7 +34,7 @@ func NewBatchUpsertService() BatchUpsertSvc {
 }
 
 func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgContacts []*models.PgContact,
-	esCompanies []*models.ElasticCompany, esContacts []*models.ElasticContact) error {
+	osCompanies []*models.OpenSearchCompany, osContacts []*models.OpenSearchContact) error {
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -43,7 +43,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.companyService.BulkUpsert(pgCompanies, esCompanies); err != nil {
+		if _, err := s.companyService.BulkUpsert(pgCompanies, osCompanies); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -52,7 +52,7 @@ func (s *batchUpsertService) UpsertBatch(pgCompanies []*models.PgCompany, pgCont
 
 	go func() {
 		defer wg.Done()
-		if _, err := s.contactService.BulkUpsert(pgContacts, esContacts); err != nil {
+		if _, err := s.contactService.BulkUpsert(pgContacts, osContacts); err != nil {
 			mu.Lock()
 			insertionError = errors.Join(insertionError, err)
 			mu.Unlock()
@@ -68,8 +68,8 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]st
 
 	pgCompanies := make([]*models.PgCompany, 0, batchLen)
 	pgContacts := make([]*models.PgContact, 0, batchLen)
-	esCompanies := make([]*models.ElasticCompany, 0, batchLen)
-	esContacts := make([]*models.ElasticContact, 0, batchLen)
+	osCompanies := make([]*models.OpenSearchCompany, 0, batchLen)
+	osContacts := make([]*models.OpenSearchContact, 0, batchLen)
 
 	companyUuids, contactUuids := make([]string, 0), make([]string, 0)
 	insertedCompanies, insertedContacts := make(map[string]struct{}), make(map[string]struct{})
@@ -81,22 +81,22 @@ func (s *batchUpsertService) ProcessBatchUpsert(batch []map[string]string) ([]st
 		}
 		company := models.PgCompanyFromRawData(cleanedRow)
 		contact := models.PgContactFromRowData(cleanedRow, company)
-		elasticCompany := models.ElasticCompanyFromRawData(company)
-		elasticContact := models.ElasticContactFromRawData(contact, company)
+		osCompany := models.OpenSearchCompanyFromRawData(company)
+		osContact := models.OpenSearchContactFromRawData(contact, company)
 
 		if _, ok := insertedCompanies[company.UUID]; !ok {
 			insertedCompanies[company.UUID] = struct{}{}
 			pgCompanies = append(pgCompanies, company)
-			esCompanies = append(esCompanies, elasticCompany)
+			osCompanies = append(osCompanies, osCompany)
 			companyUuids = append(companyUuids, company.UUID)
 		}
 
 		if _, ok := insertedContacts[contact.UUID]; !ok {
 			insertedContacts[contact.UUID] = struct{}{}
 			pgContacts = append(pgContacts, contact)
-			esContacts = append(esContacts, elasticContact)
+			osContacts = append(osContacts, osContact)
 			contactUuids = append(contactUuids, contact.UUID)
 		}
 	}
-	return companyUuids, contactUuids, s.UpsertBatch(pgCompanies, pgContacts, esCompanies, esContacts)
+	return companyUuids, contactUuids, s.UpsertBatch(pgCompanies, pgContacts, osCompanies, osContacts)
 }

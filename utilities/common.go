@@ -96,11 +96,11 @@ func ValidatePageSize(limit int) error {
 	return nil
 }
 
-func ValidateElasticPagination(page, limit int) error {
+func ValidateOpenSearchPagination(page, limit int) error {
 	if limit > constants.MaxPageSize {
 		return constants.PageSizeExceededError
 	}
-	if page > constants.MaxElasticPageNumber {
+	if page > constants.MaxOpenSearchPageNumber {
 		return constants.PageNumberExceededError
 	}
 	return nil
