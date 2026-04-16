@@ -84,7 +84,7 @@ func (j *JobStruct) DequeueJobs(jobsChannel chan models.ModelJobs, status string
 
 func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 	var wg sync.WaitGroup
-	jobsChannel := make(chan models.ModelJobs, 1000)
+	jobsChannel := make(chan models.ModelJobs, conf.JobConfig.JobInQueuedSize)
 
 	ticker := time.NewTicker(time.Duration(conf.JobConfig.TickerInterval) * time.Minute)
 	defer func() {
@@ -98,7 +98,6 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 		go j.JobConsumer(&wg, ctx, jobsChannel)
 	}
 
-	inQueSize := conf.JobConfig.JobInQueuedSize
 	for {
 		select {
 		case <-ctx.Done():
@@ -107,9 +106,6 @@ func (j *JobStruct) FirstTimeJob(ctx context.Context, args []string) {
 			j.DequeueJobs(jobsChannel, constants.OpenJobStatus)
 			return
 		case <-ticker.C:
-			if len(jobsChannel) >= inQueSize {
-				continue
-			}
 			jobs, err := j.JobsRepository.ListByFilters(models.JobsFilters{
 				Status: []string{constants.OpenJobStatus},
 				Limit:  1,
